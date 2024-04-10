@@ -6,37 +6,49 @@
  * Version: 1.0
  */
 
+
+
 if (!defined('ABSPATH')) exit; // Exit if accessed directly
 
 if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
     add_action('plugins_loaded', array('MadeSnippetsPlugin', 'init'));
 }
 
+
+/**MADE Aramex API Handler - Plugin Class */
+
 class MadeSnippetsPlugin {
+
+    
     protected static $instance;
+
+    //Aramex API Credentiaals and API Details. 
     private $client_id = 'fw-fl2-AUK0830472-b39278061d5d';
     private $client_secret = 'c921a54e-e32d-41b0-ad51-3edbaad29c21';
     private $scope = 'fw-fl2-api-nz';
     private $tokenURL = 'https://identity.fastway.org/connect/token';
     private $locationServiceURL = 'https://identity.fastway.org/api/location'; // Replace with actual location service URL
 
+
+    /************ CLASS FUNCTIONS ************/     
+    // Create Instance. 
     public static function init() {
         is_null(self::$instance) && self::$instance = new self;
         return self::$instance;
     }
 
+    // Class Constructor Function.
     private function __construct() {
         add_filter('woocommerce_get_sections_shipping', array($this, 'add_aramex_settings_section'));
         add_filter('woocommerce_get_settings_shipping', array($this, 'add_aramex_settings'), 10, 2);
-        add_filter('woocommerce_admin_settings_sanitize_option', array($this, 'validate_aramex_settings'), 10, 3);
-        add_action('admin_footer', array($this, 'trigger_get_access_token'));
-        add_action('wp_ajax_trigger_get_access_token', array($this, 'ajax_trigger_get_access_token'));
-        add_action('admin_init', array($this, 'example_call_location_service_with_token')); // Corrected
-
-        
-
+        add_filter('woocommerce_admin_settings_sanitize_option', array($this, 'fuzzfilter_aramex_settings'), 10, 3);
+        add_action('admin_init', 'new_function'); // Corrected
+        add_action('admin_init', fn() => $this->getAccessToken()); 
 
     }
+
+
+    //Function which defines two locations, makes an API Call, then handles the returned error for failure and success. 
     function example_call_location_service_with_token() {
         // Define the data array
         $locationRequest = [
@@ -67,7 +79,7 @@ class MadeSnippetsPlugin {
             'blocking'    => true,
             'headers'     => [
                 'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IkZEODZERDU4NkY5OTg1NERDMzIyRTRBNzY0QjAxMUFDMjkzRUEwMEEiLCJ0eXAiOiJhdCtqd3QiLCJ4NXQiOiJfWWJkV0ctWmhVM0RJdVNuWkxBUnJDay1vQW8ifQ.eyJuYmYiOjE3MTE5MzI5NzgsImV4cCI6MTcxMTkzNjU3OCwiaXNzIjoiaHR0cHM6Ly9pZGVudGl0eS5mYXN0d2F5Lm9yZyIsImF1ZCI6ImZ3LWZsMi1hcGktbnoiLCJjbGllbnRfaWQiOiJmdy1mbDItQVVLMDgzMDQ3Mi1iMzkyNzgwNjFkNWQiLCJjb3VudHJ5aWQiOiI2IiwicGFyZW50aWQiOiIwIiwiY3VzdG9tZXJpZCI6IjEzNzQ4MSIsInNjb3BlIjpbImZ3LWZsMi1hcGktbnoiXX0.KGGXNiqG_7jiCZoe64PFO5iImyGgiqEVZwZZ_wsebGrEuYoeSMjLkJTiu_a8IhipeDQ1bZTa-xubGl5w_W7B35yf7_czbBYg13kdV2iEeph1D0UvGwReiqW7YVsDMpBtleZhPO4McpxeDB0QU8Dqe9jZScUxlP1bHQrAYyrn1ade1ENdf0TrokIygDp3VPxPMhZwGT6yVmYRK7xiGbBD-gBt4o29N_E_JmmAYyVONP_3syBYDOqwX-gkLWeT4E0go2Kcg8n9lkTY-pznAY3nCuDw7ZkQp2zxPNjm0nQuoDlTxl9s_a0gyHHMpYyWSsEEohGfizbL_04NzjTTACoaqeWIGAp-TbELxvKiF_EY7YTDiZKuxW-7Pka8JpMTo26WWaaSK271TbhgZd5EMmi6aq50WGMB1vaDGjY9YOC7lG1C6OLKGI4_o71EZjhFbyVQhn4GsTwzd6CqxEYXxKcBhjxCU4a6YZGdopd6nb7abDTkyZ9ud54YqDH07B-aByOcCAzageriYZ9YdH-zsf4jGmTgFe-9_QzkI4b6yYjqmWMvjBcTFEsNn66R3xmnJa8iYVASt3Np2pLiZtuZ8l5vGBXvkAjapRP0O8wsOqBv4BRLXHA5q9TzAM_To0NAa1WNpi92gx4pigS_ExEn9WBL_2XbwO9RmHr1WddCJw_kj_w'
+                'Authorization' => 'eyJhbGciOiJSUzI1NiIsImtpZCI6IkZEODZERDU4NkY5OTg1NERDMzIyRTRBNzY0QjAxMUFDMjkzRUEwMEEiLCJ0eXAiOiJhdCtqd3QiLCJ4NXQiOiJfWWJkV0ctWmhVM0RJdVNuWkxBUnJDay1vQW8ifQ.eyJuYmYiOjE3MTIzMDU2NTIsImV4cCI6MTcxMjMwOTI1MiwiaXNzIjoiaHR0cHM6Ly9pZGVudGl0eS5mYXN0d2F5Lm9yZyIsImF1ZCI6ImZ3LWZsMi1hcGktbnoiLCJjbGllbnRfaWQiOiJmdy1mbDItQVVLMDgzMDQ3Mi1iMzkyNzgwNjFkNWQiLCJjb3VudHJ5aWQiOiI2IiwicGFyZW50aWQiOiIwIiwiY3VzdG9tZXJpZCI6IjEzNzQ4MSIsInNjb3BlIjpbImZ3LWZsMi1hcGktbnoiXX0.mDcpiH8xzkqqOUlZ9pO0H9QNMVf9r2IMYer7fIznuuCGQ4iPN3ZPZ3kAb9Nr1sA2cbijhOVYOWJbhd4dTlp3ReNU7c9OaVyT52rrykxbn61McS-Jbbhopvz3PaWlJNKw5GI1UZQT2zxlBauvUKc2I6PIJE9He61YOdKfFz3vLm-7Oe3_h7ZHf35-YMgmVpJxkTDzBcnSIotSzKmx5C3IivRy6kNYWTzjaI8rkSbYW-xXtngIhYOz30BXvhTNlKtUF4XX0o0pckwQJ0HvK9yEc6kLAL9D9ySzUYPevgLUQJBo03frTGhAxXVv8K9eE0zHq4Gznz4lLE2QJkC4sW4RSgX8Pe7MZn4uYBYW-YH_6fwoeW828iwzYhbhbSQxJr7X3Bsy9J8zJYK7OrtOIV5Hk5yOCSiQD09GXNGN17QeXiWHnpX0s61012noAMf5SmcgMEycnZG7zlswmOUIrOu9xADh4P-L5z5gAEzUjtvnGUdjrCV3vOhUfKoNwksIOOvBudh8tt_0EDAN0r4K9Rnq1KToa6LssQ2t6jy8EMJdLIbL80hlnQnRAGqUaSvWVhvWP_4HiOZNzkHbKaGX9R0M2jsgi29Ez5z2fW4z21upk1_wMUej4Zt6uykT5mAQCoI16Rp1Mx5k77WOCSPWHuN8nT6UstINLFKeOmubhQd4Ptk'
             ],
             'method'      => 'POST',
             'data_format' => 'body',
@@ -75,6 +87,7 @@ class MadeSnippetsPlugin {
     
         // Make the API call
         $response = wp_remote_post('https://identity.fastway.org/api/location', $args);
+
     
         // Check for error in the response and handle it
         if (is_wp_error($response)) {
@@ -87,42 +100,11 @@ class MadeSnippetsPlugin {
             // Save or process the response body as needed
             echo '<pre>' . print_r($responseBody, true) . '</pre>';
         }
+        return $response; 
     }
-
-    public function trigger_get_access_token() {
-        ?>
-        <script>
-            jQuery(document).ready(function($) {
-                $.ajax({
-                    url: ajaxurl,
-                    type: 'POST',
-                    data: {
-                        action: 'trigger_get_access_token'
-                    },
-                    success: function(response) {
-                        console.log('Access token generated:', response);
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Failed to generate access token. Error:', error);
-                    }
-                });
-            });
-        </script>
-        <?php
-    }
-
-    public function ajax_trigger_get_access_token() {
-        $token = $this->getAccessToken();
-        if ($token) {
-            echo 'Token generated successfully.';
-        } else {
-            echo 'Failed to generate token.';
-        }
-        wp_die();
-    }
-    
-    public function validate_aramex_settings($value, $option, $raw_value) {
-        // Validation for the Client ID
+  
+    public function fuzzfilter_aramex_settings($value, $option, $raw_value) {
+        // Validation for the Client ID | 30 Characters and Starts with 'fw-' 
         if ($option['id'] === 'aramex_client_id') {
             if (strlen($raw_value) !== 30 || strpos($raw_value, 'fw-') !== 0) {
                 WC_Admin_Settings::add_error(__('Your Client ID is Wrong: Client ID must be 30 characters long and start with "fw-".', 'text-domain'));
@@ -130,7 +112,7 @@ class MadeSnippetsPlugin {
             }
         }
     
-        // Validation for the Client Secret
+        // Validation for the Client Secret | 36 Characters  
         if ($option['id'] === 'aramex_client_secret') {
             if (strlen($raw_value) !== 36) {
                 WC_Admin_Settings::add_error(__('Your Client Secret is Wrong: Client Secret must be exactly 36 characters long.', 'text-domain'));
@@ -141,6 +123,7 @@ class MadeSnippetsPlugin {
         return $value; // Return the new value if all validations pass
     }
     
+    /************* ADD ARAMEX PLUGIN SETTINGS *************/
 
     public function add_aramex_settings_section($sections) {
         $sections['aramex'] = __('Aramex', 'text-domain');
@@ -201,12 +184,12 @@ class MadeSnippetsPlugin {
                 ),
             );
             return array_merge($settings, $aramex_settings);
-        }
-        return $settings;
+        }    
     }
 
     
     private function getAccessToken() {
+        //Prepare Variables for API Call
         $client_id = get_option('aramex_client_id');
         $client_secret = get_option('aramex_client_secret');
         $country = get_option('aramex_country');
@@ -247,8 +230,13 @@ class MadeSnippetsPlugin {
     
         $responseArray = json_decode($response, true);
         if (isset($responseArray['access_token'])) {
+            echo 'Access Token: ' . $responseArray['access_token']; 
             update_option('aramex_token', $responseArray['access_token']);
+
+            
+
             return $responseArray['access_token'];
+
         } else {
             echo 'Access token not found in response';
             return false;
@@ -258,3 +246,108 @@ class MadeSnippetsPlugin {
 
     
 }
+
+function new_function() {
+
+    $url = "https://api.myfastway.com.au/api/location";
+    $location_args = [
+        "conTypeId" => 1,
+        "from" => [
+            "streetAddress" => "1 Tennis Lane, Parnell",
+            "locality" => "Parnell",
+            "postalCode" => "1010",
+            "country" => "New Zealand"
+        ],
+        "to" => [
+            "streetAddress" => "10 Bridge Avenue, Te Atatu South",
+            "locality" => "Auckland",
+            "postalCode" => "0610",
+            "country" => "New Zealand"
+        ]
+    ];
+
+    // Encode the array into JSON
+    $jsonPayload = json_encode($location_args);
+
+    $args = [
+        'body'        => $jsonPayload,
+        'timeout'     => '5',
+        'redirection' => '5',
+        'httpversion' => '1.0',
+        'blocking'    => true,
+        'headers'     => [
+            'Content-Type' => 'application/json',
+            'Authorization' => 'bearer ' . 'eyJhbGciOiJSUzI1NiIsImtpZCI6IkZEODZERDU4NkY5OTg1NERDMzIyRTRBNzY0QjAxMUFDMjkzRUEwMEEiLCJ0eXAiOiJhdCtqd3QiLCJ4NXQiOiJfWWJkV0ctWmhVM0RJdVNuWkxBUnJDay1vQW8ifQ.eyJuYmYiOjE3MTIzNjU2NDYsImV4cCI6MTcxMjM2OTI0NiwiaXNzIjoiaHR0cHM6Ly9pZGVudGl0eS5mYXN0d2F5Lm9yZyIsImF1ZCI6ImZ3LWZsMi1hcGktbnoiLCJjbGllbnRfaWQiOiJmdy1mbDItQVVLMDgzMDQ3Mi1iMzkyNzgwNjFkNWQiLCJjb3VudHJ5aWQiOiI2IiwicGFyZW50aWQiOiIwIiwiY3VzdG9tZXJpZCI6IjEzNzQ4MSIsInNjb3BlIjpbImZ3LWZsMi1hcGktbnoiXX0.ksgGSiQ8cbYQlIPqSdOMeXCQWXtjCF2uwRA7Ddl5cBrvkKj0rDSqmeTNYhDZJH0_UIG4R2UCFdFzFIZVxBV8CQm0B23BysiGLBICpCZwIvW4gnMzivAFcA--a56DIjnGtUxAV88PkZq_EzPHkP0USRX9tKMeO0CVYIisKi3CWvzMpkG5z8098XQSnXtNlmjbUhShVGEPh1gkDoFJjALfM5wCYo1W9AWmWjF1PwGVXypAF7T4ZglBfZtkAXUvxqcqjJ3Sc0STrHQ_eoyagGiHqtgjsJ_512TV24q6xEWRryQDi97_4jHT_CN3KO3eB54fddCrX8NKJ8ZzSehR6ri5ROnk6iL6KqVtGD4O246z72iA1OBQvEdtWpDVVeHG1dRhZuehuiDRVf5W3ZvQRH_Qh15b3UaQie1LFKMjhe74_HXjD2S9pZAZKwslwPA-5tMDdY_SfyeAcj0PwVGSof3zskljww_orSjbPg-R1J62UqaxBWvXQ2e0K38j_3OBe1WyEpXg0n-VY_s2QfEvUlkyzm3EWmEOwoFDO_gdtj4iMcp7BxV5r-zlG3r29bSfy8IF7KwpIIMNJ2XyfbH0f7a8MZdhX_EC3LpIv801ZHeSJniTd6niyWfkE84Y2vT3OSvjyGbtRW22px83sMJDrK91OPCB7g9BREMA1lVOKD8G9zw'
+        ],
+        'method'      => 'POST',
+        'data_format' => 'body',
+    ];
+
+
+    $post_create = wp_remote_post($url, $args);
+    // Test calling the updateOrderPageShippingMeta. 
+    $newVariable = mainPluginFeatures("Test", "Test", "Test"); 
+
+    echo "‹pre>";
+    //print_r($post_create);
+    print_r($newVariable);
+
+    
+
+}
+
+
+/******************************** */
+// Add custom meta box to WooCommerce orders page
+add_action( 'add_meta_boxes', 'custom_order_meta_box' );
+
+/**
+ * Add custom meta box.
+ *
+ * @return void
+ */
+function custom_order_meta_box() {
+ add_meta_box( 'custom-order-meta-box',    __( 'Aramex Meta Box', 'woocommerce' ), 'add_custom_other_field_content', 'shop_order', 'side',  'core');
+}
+
+/**
+ * Callback function for custom meta box.
+ *
+ * @param object $post Post object.
+ *
+ * @return void
+ */
+function add_custom_other_field_content( $post ) {
+    // Get the saved value
+    $custom_value = get_post_meta( $post->ID, '_custom_value', true );
+
+
+    // Output the input field
+    echo '<p><label for="custom-value">' ."Penis" . '</label> ';
+    echo '<input type="text" id="custom-value" name="custom_value" value="' . esc_attr( $custom_value ) . '" /></p>';
+}
+
+
+/******************************** */
+
+//function requestShippingCoSignmentfromAramex( $address1 , $address2, $weight, $dimensions ){
+
+//    return $carrier_id, $tracking_number_id, $shipping_label_url; 
+//}
+
+function mainPluginFeatures( $carrier_id, $tracking_number_id, $shipping_label_url){
+
+    //addNewShippingCoSignment(); 
+    return updateOrderPageShippingMeta( $carrier_id, $tracking_number_id, $shipping_label_url ); 
+    //addPurolatorPluginTabel(); 
+
+    
+}
+
+function updateOrderPageShippingMeta( $carrier_id, $tracking_number_id, $shipping_label_url ){
+    
+    $TempVariable = 'TestingupdateOrderPageShippingMeta' . $carrier_id . $tracking_number_id .  $shipping_label_url; 
+    return $TempVariable; 
+}
+
+
