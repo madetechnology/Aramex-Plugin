@@ -52,6 +52,9 @@ class MadeSnippetsPlugin {
 
     //Function which defines two locations, makes an API Call, then handles the returned error for failure and success. 
     function example_call_location_service_with_token() {
+        $aramexToken = get_option('aramex_token');
+        $aramexTokenUpdate = 'Bearer ' . $aramexToken; 
+
         // Define the data array
         $locationRequest = [
             "conTypeId" => 1, 
@@ -81,7 +84,7 @@ class MadeSnippetsPlugin {
             'blocking'    => true,
             'headers'     => [
                 'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IkZEODZERDU4NkY5OTg1NERDMzIyRTRBNzY0QjAxMUFDMjkzRUEwMEEiLCJ0eXAiOiJhdCtqd3QiLCJ4NXQiOiJfWWJkV0ctWmhVM0RJdVNuWkxBUnJDay1vQW8ifQ.eyJuYmYiOjE3MTI4MjkxMzgsImV4cCI6MTcxMjgzMjczOCwiaXNzIjoiaHR0cHM6Ly9pZGVudGl0eS5mYXN0d2F5Lm9yZyIsImF1ZCI6ImZ3LWZsMi1hcGktbnoiLCJjbGllbnRfaWQiOiJmdy1mbDItQVVLMDgzMDQ3Mi1iMzkyNzgwNjFkNWQiLCJjb3VudHJ5aWQiOiI2IiwicGFyZW50aWQiOiIwIiwiY3VzdG9tZXJpZCI6IjEzNzQ4MSIsInNjb3BlIjpbImZ3LWZsMi1hcGktbnoiXX0.OXe2xpAfm6Wfb07RtuR_A_thKmBC2sq2QurNB-PbA_9jDSWuHOpMhArU3pCU54WBxPG73VjbwBPi2-Exg6_utHuPQPFhu2Li_eNUbQn29NzTtzpZQt9wflJkT92907HrBPEQRmfLE0UnbY6nmvFq20y0NjOSiAAg3ZtZrEEuTy79Aueihu071WfuJ8NY1Jr89xzbOk9CQEVP4k218FJszwDWJRB6q1bz2cUYaz8MmO_7yo2OjgGtgd_sGPYvxd0LPGpdZ4f2LUwktnJvGDZvYa9zzvCG6OodJ6nHTafQY3Vj4vamFNxIJVtL-mcoe6Kznxf9dMEKbGhcDXAoQNWeShUSk7NVjtJHA5WVG_K9c9EgeoNSYiWN7fPHXqwZ3LxFulkfGg9WwmJ0cPK5GXSUF9B7jvaUkR3gBjQVDc-5wY0_JPPL3nuJfXpAnL79Wj6Re92x2VJI4RaRr7MIgElTowFykCe9XzRPXsWDnG9EV-hDGg_8PjGjhVMLG_G9rZe1a_bCsZH-JLYD6o894Xbys9tT5PSuTJOhNcyM2kPYw1bJpR6H1B_GnFuSk9571TS78eN5RFsoAQQFuyJjSZd-54q7r65TNtPYcCjSQhvaLTE_4jVkECCH3vWellFBszcB8odEOJ0JUSawO3iEpCwyeIPD3sn7Z4lLYMslOdovRFY'
+                'Authorization' =>  $aramexTokenUpdate
             ],
             'method'      => 'POST',
             'data_format' => 'body',
