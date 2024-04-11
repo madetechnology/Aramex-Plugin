@@ -51,27 +51,51 @@ class MadeSnippetsPlugin {
     }
 
 
+
     //Function which defines two locations, makes an API Call, then handles the returned error for failure and success. 
     function example_call_location_service_with_token( $from_streetAddress, $from_locality, $from_postalCode, $from_country, $to_streetAddress, $to_locality , $to_postalCode , $to_country ) {
         $aramexToken = get_option('aramex_token');
         $aramexTokenUpdate = 'Bearer ' . $aramexToken; 
 
-        // Define the data array
+        $address = retrieveWPOrderShippingAddress(61);
+        
+        if ( $address ) {
+                    // Define the data array
+            $locationRequest = [
+                "conTypeId" => 1, 
+                "from" => [
+                    "streetAddress" => $address['from_streetAddress'],
+                    "locality" => $address['from_locality'],
+                    "postalCode" => $address['from_postalCode'],
+                    "country" => $address['from_country']
+                ],
+                "to" => [
+                    "streetAddress" => $to_streetAddress,
+                    "locality" => $to_locality,
+                    "postalCode" => $to_postalCode,
+                    "country" => $to_country
+                ]
+            ];
+        } else {
+            // Define the data array
         $locationRequest = [
             "conTypeId" => 1, 
             "from" => [
-                "streetAddress" => "10 Bridge Avenue",
-                "locality" => "Te Atatu",
-                "postalCode" => "0610",
-                "country" => "NZ"
+                "streetAddress" => $from_streetAddress,
+                "locality" => $from_locality,
+                "postalCode" => $from_postalCode,
+                "country" => $from_country
             ],
             "to" => [
-                "streetAddress" => "145 Symonds Street",
-                "locality" => "Grafton",
-                "postalCode" => "1010",
-                "country" => "NZ"
+                "streetAddress" => $to_streetAddress,
+                "locality" => $to_locality,
+                "postalCode" => $to_postalCode,
+                "country" => $to_country
             ]
         ];
+
+        }
+        
     
         // Encode the array into JSON
         $jsonPayload = json_encode($locationRequest);
@@ -489,3 +513,35 @@ function updateExistingWCOrderMeta( $order_id , $carrier_id, $tracking_number_id
     // Return the updated order object
     return $order;
 }
+
+    /* Function to retrieve WP Order Shipping Address */ 
+function retrieveWPOrderShippingAddress($orderId) {
+        // Load the order
+        $order = wc_get_order($orderId);
+        if (!$order) {
+            return false; // Order not found
+        }
+    
+        // Extract shipping address (assuming 'from' is the shipping address)
+        $from_streetAddress = "10 Bridge Avenue"; 
+        $from_locality = "Te Atatu South"; 
+        $from_postalCode = "0610"; 
+        $from_country = "NZ"; 
+    
+        // Extract billing address (assuming 'to' is the billing address for this example)
+        $to_streetAddress = $order->get_billing_address_1();
+        $to_locality = $order->get_shipping_city();
+        $to_postalCode = $order->get_shipping_postcode();
+        $to_country = $order->get_shipping_country();
+    
+        return [
+            'from_streetAddress' => $from_streetAddress,
+            'from_locality' => $from_locality,
+            'from_postalCode' => $from_postalCode,
+            'from_country' => $from_country,
+            'to_streetAddress' => $to_streetAddress,
+            'to_locality' => $to_locality,
+            'to_postalCode' => $to_postalCode,
+            'to_country' => $to_country,
+        ];
+    }
