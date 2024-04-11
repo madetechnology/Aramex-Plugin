@@ -42,8 +42,10 @@ class MadeSnippetsPlugin {
         add_filter('woocommerce_get_sections_shipping', array($this, 'add_aramex_settings_section'));
         add_filter('woocommerce_get_settings_shipping', array($this, 'add_aramex_settings'), 10, 2);
         add_filter('woocommerce_admin_settings_sanitize_option', array($this, 'fuzzfilter_aramex_settings'), 10, 3);
-        add_action('admin_init', 'new_function'); // Corrected
-        add_action('admin_init', fn() => $this->getAccessToken()); 
+        //add_action('admin_init', 'new_function'); // Corrected
+        //add_action('admin_init', fn() => $this->getAccessToken()); 
+        add_action('admin_init', fn() => $this->example_call_location_service_with_token()); 
+
 
     }
 
@@ -52,18 +54,18 @@ class MadeSnippetsPlugin {
     function example_call_location_service_with_token() {
         // Define the data array
         $locationRequest = [
-            "conTypeId" => 1,
+            "conTypeId" => 1, 
             "from" => [
-                "streetAddress" => "1 Tennis Lane, Parnell",
-                "locality" => "Parnell",
-                "postalCode" => "1010",
-                "country" => "New Zealand"
+                "streetAddress" => "10 Bridge Avenue",
+                "locality" => "Te Atatu",
+                "postalCode" => "0610",
+                "country" => "NZ"
             ],
             "to" => [
-                "streetAddress" => "10 Bridge Avenue, Te Atatu South",
-                "locality" => "Auckland",
-                "postalCode" => "0610",
-                "country" => "New Zealand"
+                "streetAddress" => "145 Symonds Street",
+                "locality" => "Grafton",
+                "postalCode" => "1010",
+                "country" => "NZ"
             ]
         ];
     
@@ -79,29 +81,42 @@ class MadeSnippetsPlugin {
             'blocking'    => true,
             'headers'     => [
                 'Content-Type' => 'application/json',
-                'Authorization' => 'eyJhbGciOiJSUzI1NiIsImtpZCI6IkZEODZERDU4NkY5OTg1NERDMzIyRTRBNzY0QjAxMUFDMjkzRUEwMEEiLCJ0eXAiOiJhdCtqd3QiLCJ4NXQiOiJfWWJkV0ctWmhVM0RJdVNuWkxBUnJDay1vQW8ifQ.eyJuYmYiOjE3MTIzMDU2NTIsImV4cCI6MTcxMjMwOTI1MiwiaXNzIjoiaHR0cHM6Ly9pZGVudGl0eS5mYXN0d2F5Lm9yZyIsImF1ZCI6ImZ3LWZsMi1hcGktbnoiLCJjbGllbnRfaWQiOiJmdy1mbDItQVVLMDgzMDQ3Mi1iMzkyNzgwNjFkNWQiLCJjb3VudHJ5aWQiOiI2IiwicGFyZW50aWQiOiIwIiwiY3VzdG9tZXJpZCI6IjEzNzQ4MSIsInNjb3BlIjpbImZ3LWZsMi1hcGktbnoiXX0.mDcpiH8xzkqqOUlZ9pO0H9QNMVf9r2IMYer7fIznuuCGQ4iPN3ZPZ3kAb9Nr1sA2cbijhOVYOWJbhd4dTlp3ReNU7c9OaVyT52rrykxbn61McS-Jbbhopvz3PaWlJNKw5GI1UZQT2zxlBauvUKc2I6PIJE9He61YOdKfFz3vLm-7Oe3_h7ZHf35-YMgmVpJxkTDzBcnSIotSzKmx5C3IivRy6kNYWTzjaI8rkSbYW-xXtngIhYOz30BXvhTNlKtUF4XX0o0pckwQJ0HvK9yEc6kLAL9D9ySzUYPevgLUQJBo03frTGhAxXVv8K9eE0zHq4Gznz4lLE2QJkC4sW4RSgX8Pe7MZn4uYBYW-YH_6fwoeW828iwzYhbhbSQxJr7X3Bsy9J8zJYK7OrtOIV5Hk5yOCSiQD09GXNGN17QeXiWHnpX0s61012noAMf5SmcgMEycnZG7zlswmOUIrOu9xADh4P-L5z5gAEzUjtvnGUdjrCV3vOhUfKoNwksIOOvBudh8tt_0EDAN0r4K9Rnq1KToa6LssQ2t6jy8EMJdLIbL80hlnQnRAGqUaSvWVhvWP_4HiOZNzkHbKaGX9R0M2jsgi29Ez5z2fW4z21upk1_wMUej4Zt6uykT5mAQCoI16Rp1Mx5k77WOCSPWHuN8nT6UstINLFKeOmubhQd4Ptk'
+                'Authorization' => 'Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IkZEODZERDU4NkY5OTg1NERDMzIyRTRBNzY0QjAxMUFDMjkzRUEwMEEiLCJ0eXAiOiJhdCtqd3QiLCJ4NXQiOiJfWWJkV0ctWmhVM0RJdVNuWkxBUnJDay1vQW8ifQ.eyJuYmYiOjE3MTI4MjkxMzgsImV4cCI6MTcxMjgzMjczOCwiaXNzIjoiaHR0cHM6Ly9pZGVudGl0eS5mYXN0d2F5Lm9yZyIsImF1ZCI6ImZ3LWZsMi1hcGktbnoiLCJjbGllbnRfaWQiOiJmdy1mbDItQVVLMDgzMDQ3Mi1iMzkyNzgwNjFkNWQiLCJjb3VudHJ5aWQiOiI2IiwicGFyZW50aWQiOiIwIiwiY3VzdG9tZXJpZCI6IjEzNzQ4MSIsInNjb3BlIjpbImZ3LWZsMi1hcGktbnoiXX0.OXe2xpAfm6Wfb07RtuR_A_thKmBC2sq2QurNB-PbA_9jDSWuHOpMhArU3pCU54WBxPG73VjbwBPi2-Exg6_utHuPQPFhu2Li_eNUbQn29NzTtzpZQt9wflJkT92907HrBPEQRmfLE0UnbY6nmvFq20y0NjOSiAAg3ZtZrEEuTy79Aueihu071WfuJ8NY1Jr89xzbOk9CQEVP4k218FJszwDWJRB6q1bz2cUYaz8MmO_7yo2OjgGtgd_sGPYvxd0LPGpdZ4f2LUwktnJvGDZvYa9zzvCG6OodJ6nHTafQY3Vj4vamFNxIJVtL-mcoe6Kznxf9dMEKbGhcDXAoQNWeShUSk7NVjtJHA5WVG_K9c9EgeoNSYiWN7fPHXqwZ3LxFulkfGg9WwmJ0cPK5GXSUF9B7jvaUkR3gBjQVDc-5wY0_JPPL3nuJfXpAnL79Wj6Re92x2VJI4RaRr7MIgElTowFykCe9XzRPXsWDnG9EV-hDGg_8PjGjhVMLG_G9rZe1a_bCsZH-JLYD6o894Xbys9tT5PSuTJOhNcyM2kPYw1bJpR6H1B_GnFuSk9571TS78eN5RFsoAQQFuyJjSZd-54q7r65TNtPYcCjSQhvaLTE_4jVkECCH3vWellFBszcB8odEOJ0JUSawO3iEpCwyeIPD3sn7Z4lLYMslOdovRFY'
             ],
             'method'      => 'POST',
             'data_format' => 'body',
         ];
     
         // Make the API call
-        $response = wp_remote_post('https://identity.fastway.org/api/location', $args);
+        $response = wp_remote_post('https://api.myfastway.co.nz/api/location', $args);
 
     
         // Check for error in the response and handle it
-        if (is_wp_error($response)) {
-            $error_message = $response->get_error_message();
-            echo "Something went wrong: $error_message";
+    if (is_wp_error($response)) {
+        $error_message = $response->get_error_message();
+        echo "Something went wrong: $error_message";
+    } else {
+        // Decode the response body
+        $responseBody = wp_remote_retrieve_body($response);
+        
+        $data = json_decode($responseBody, true); // Decode into an associative array
+
+        // Output the entire response data
+        echo '<pre>';
+        print_r($responseBody); // Use var_dump($data) if you prefer
+        echo '</pre>';
+        
+
+        // Extract the locationDetailsKey
+        if (isset($data['data']['locationDetails']['locationDetailsKey'])) {
+            $locationDetailsKey = $data['data']['locationDetails']['locationDetailsKey'];
+            echo "Location Details Key: " . $locationDetailsKey;
         } else {
-            // Assuming you want to save the response body for later use
-            $responseBody = wp_remote_retrieve_body($response);
-            
-            // Save or process the response body as needed
-            echo '<pre>' . print_r($responseBody, true) . '</pre>';
+            echo "Location Details Key not found in the response.";
         }
-        return $response; 
     }
+    return $response; 
+}
   
     public function fuzzfilter_aramex_settings($value, $option, $raw_value) {
         // Validation for the Client ID | 30 Characters and Starts with 'fw-' 
