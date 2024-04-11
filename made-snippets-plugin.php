@@ -287,9 +287,8 @@ function new_function() {
     $post_create = wp_remote_post($url, $args);
     // Test calling the updateOrderPageShippingMeta. 
     $newVariable = mainPluginFeatures("Test", "Test", "Test"); 
-    //createNewWCOrder();
-    updateExistingWCOrder(58);
-    updateExistingWCOrderMeta($order_id = 58 , $carrier_id = 'Example Carrier ID', $tracking_number_id = 'Example Tracker ID', $shipping_label_url = 'Example Shipping URL');
+
+    updateExistingWCOrderMeta($order_id = 56 , $carrier_id = '1111111111', $tracking_number_id = '9999999999', $shipping_label_url = 'google.com');
 
 
     echo "‹pre>";
@@ -301,35 +300,7 @@ function new_function() {
 }
 
 
-/******************************** */
-// Add custom meta box to WooCommerce orders page
-add_action( 'add_meta_boxes', 'custom_order_meta_box' );
 
-/**
- * Add custom meta box.
- *
- * @return void
- */
-function custom_order_meta_box() {
- add_meta_box( 'custom-order-meta-box',    __( 'Aramex Meta Box', 'woocommerce' ), 'add_custom_other_field_content', 'shop_order', 'side',  'core');
-}
-
-/**
- * Callback function for custom meta box.
- *
- * @param object $post Post object.
- *
- * @return void
- */
-function add_custom_other_field_content( $post ) {
-    // Get the saved value
-    $custom_value = get_post_meta( $post->ID, '_custom_value', true );
-
-
-    // Output the input field
-    echo '<p><label for="custom-value">' ."Penis" . '</label> ';
-    echo '<input type="text" id="custom-value" name="custom_value" value="' . esc_attr( $custom_value ) . '" /></p>';
-}
 
 
 /******************************** */
@@ -341,6 +312,7 @@ function add_custom_other_field_content( $post ) {
 
 function mainPluginFeatures( $carrier_id, $tracking_number_id, $shipping_label_url){
 
+    
     //addNewShippingCoSignment(); 
     return updateOrderPageShippingMeta( $carrier_id, $tracking_number_id, $shipping_label_url ); 
     //addPurolatorPluginTabel(); 
@@ -386,12 +358,32 @@ function aramex_shipping_metabox_callback( $post_or_order_object ) {
         return;
     }
 
-    // Display the value of the custom field
-    echo "This is the new code:" . $order->get_meta( '_employee_code' ) . "\n";
-    echo "Carrier ID :" . $order->get_meta( '_made_aramex_carrier_id'). "\n";
-    echo "Shipping Label URL" . $order->get_meta( '_made_aramex_tracking_number_id' ). "\n";
-}
+    // Format and display the values as required
+    $shipping_url = $order->get_meta( '_made_aramex_shipping_label_url' );
+    $carrier_id = $order->get_meta( '_made_aramex_carrier_id' );
+    $tracking_number = $order->get_meta( '_made_aramex_tracking_number_id' );
 
+    // Check if shipping URL is present and display as a clickable link
+    if ( ! empty( $shipping_url ) ) {
+        echo "Shipping Label URL: <a href='" . esc_url( $shipping_url ) . "' target='_blank'>Click here to view the shipping label</a><br>";
+    } else {
+        echo "Shipping Label URL: Not available<br>";
+    }
+
+    // Display Carrier ID
+    if ( ! empty( $carrier_id ) ) {
+        echo "Carrier ID: " . esc_html( $carrier_id ) . "<br>";
+    } else {
+        echo "Carrier ID: Not available<br>";
+    }
+
+    // Display Tracking Number
+    if ( ! empty( $tracking_number ) ) {
+        echo "Tracking Number: " . esc_html( $tracking_number ) . "<br>";
+    } else {
+        echo "Tracking Number: Not available<br>";
+    }
+}
 
 
 //This Function Is Use to Update the Order_id
@@ -456,7 +448,8 @@ function updateExistingWCOrder( $order_id ) {
 
 
 
-//This Function Is Use to Update the Order_id
+//This Function Is Use to Update the Meta Data for the Aramex Plugin. 
+/* Inputs : Order ID, Carrier ID, Tracking Number and Shipping Label URL*/
 function updateExistingWCOrderMeta( $order_id , $carrier_id, $tracking_number_id, $shipping_label_url ) {
     // Attempt to fetch the existing order with ID 61
     
