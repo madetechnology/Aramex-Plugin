@@ -287,6 +287,10 @@ function new_function() {
     $post_create = wp_remote_post($url, $args);
     // Test calling the updateOrderPageShippingMeta. 
     $newVariable = mainPluginFeatures("Test", "Test", "Test"); 
+    //createNewWCOrder();
+    updateExistingWCOrder(58);
+    updateExistingWCOrderMeta($order_id = 58 , $carrier_id = 'Example Carrier ID', $tracking_number_id = 'Example Tracker ID', $shipping_label_url = 'Example Shipping URL');
+
 
     echo "‹pre>";
     //print_r($post_create);
@@ -351,3 +355,125 @@ function updateOrderPageShippingMeta( $carrier_id, $tracking_number_id, $shippin
 }
 
 
+// Add Custom Meta Box On HPOS Enabled Orders Page
+use Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController;
+
+add_action( 'add_meta_boxes', function() {
+    // Determine the correct screen ID based on whether custom orders table usage is enabled
+    $screen_id = wc_get_container()->get(
+        CustomOrdersTableController::class
+    )->custom_orders_table_usage_is_enabled()
+        ? wc_get_page_screen_id( 'shop-order' )
+        : 'shop_order';
+
+    // Add the meta box with the determined screen ID
+    add_meta_box(
+        'aramex_shipping_metabox',
+        'Aramex Shipping Details',
+        'aramex_shipping_metabox_callback',
+        $screen_id
+    );
+});
+
+function aramex_shipping_metabox_callback( $post_or_order_object ) {
+    // Determine whether the passed object is a WP_Post or an order object
+    $order = ( $post_or_order_object instanceof WP_Post )
+        ? wc_get_order( $post_or_order_object->ID )
+        : $post_or_order_object;
+
+    // If no order is found, return early
+    if ( ! $order ) {
+        return;
+    }
+
+    // Display the value of the custom field
+    echo "This is the new code:" . $order->get_meta( '_employee_code' ) . "\n";
+    echo "Carrier ID :" . $order->get_meta( '_made_aramex_carrier_id'). "\n";
+    echo "Shipping Label URL" . $order->get_meta( '_made_aramex_tracking_number_id' ). "\n";
+}
+
+
+
+//This Function Is Use to Update the Order_id
+function updateExistingWCOrder( $order_id ) {
+    // Attempt to fetch the existing order with ID 61
+    
+    $order = wc_get_order($order_id);
+    
+    // Check if the order exists
+    if (!$order) {
+        // Optionally, you can log this error or handle it as needed
+        error_log("Order with ID $order_id does not exist.");
+        return false;
+    }
+
+    // Add products to the order
+    $order->add_product(wc_get_product(136), 2); // Example: Add 2 quantities of product with ID 136
+    $order->add_product(wc_get_product(70)); // Example: Add 1 quantity of product with ID 70
+
+    // Add shipping details
+    $shipping = new WC_Order_Item_Shipping();
+    $shipping->set_method_title('Free Shipping'); // Name of the shipping method
+    $shipping->set_method_id('free_shipping:1'); // ID of the shipping method, adjust as needed
+    $shipping->set_total(0); // Set shipping cost, if applicable
+    $order->add_item($shipping);
+
+    // Set billing and shipping addresses
+    $address = array(
+        'first_name' => 'Testing ',
+        'last_name'  => 'User',
+        'company'    => 'rudrastyh.com',
+        'email'      => 'no-reply@rudrastyh.com',
+        'phone'      => '+995-123-4567',
+        'address_1'  => '29 Kote Marjanishvili St',
+        'address_2'  => '', // Optional, for additional address information
+        'city'       => 'Tbilisi',
+        'state'      => '', // Optional, depending on country
+        'postcode'   => '0108',
+        'country'    => 'GE'
+    );
+    $order->set_address($address, 'billing');
+    $order->set_address($address, 'shipping');
+
+    // Set the payment method
+    $order->set_payment_method('stripe'); // Ensure 'stripe' is a valid and enabled WC payment gateway ID
+    $order->set_payment_method_title('Credit/Debit Card');
+
+    // Update the order status to 'completed'
+    // Be cautious with changing order statuses programmatically
+    $order->set_status('wc-completed', 'Order updated programmatically.');
+
+    $order->update_meta_data('_employee_code', '1234321');
+
+
+    // Calculate totals and save the order
+    $order->calculate_totals();
+    $order->save();
+
+    // Return the updated order object
+    return $order;
+}
+
+
+
+//This Function Is Use to Update the Order_id
+function updateExistingWCOrderMeta( $order_id , $carrier_id, $tracking_number_id, $shipping_label_url ) {
+    // Attempt to fetch the existing order with ID 61
+    
+    $order = wc_get_order($order_id);
+    
+    // Check if the order exists
+    if (!$order) {
+        // Optionally, you can log this error or handle it as needed
+        error_log("Order with ID $order_id does not exist.");
+        return false;
+    }
+    $order->update_meta_data('_made_aramex_carrier_id', $carrier_id);
+    $order->update_meta_data('_made_aramex_tracking_number_id', $tracking_number_id);
+    $order->update_meta_data('_made_aramex_shipping_label_url', $shipping_label_url);
+
+    $order->save();
+
+    // Return the updated order object
+    return $order;
+}
