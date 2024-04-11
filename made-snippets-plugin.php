@@ -44,14 +44,15 @@ class MadeSnippetsPlugin {
         add_filter('woocommerce_admin_settings_sanitize_option', array($this, 'fuzzfilter_aramex_settings'), 10, 3);
         //add_action('admin_init', 'new_function'); // Corrected
         //add_action('admin_init', fn() => $this->getAccessToken()); 
-        add_action('admin_init', fn() => $this->example_call_location_service_with_token()); 
+        add_action('admin_init', fn() => $this->example_call_location_service_with_token($from_streetAddress = "10 Bridge Avenue", $from_localit = "Te Atatu", $from_postalCode = "0610", $from_country = "NZ", $to_streetAddress = "145 Symonds Street", $to_locality = "Grafton", $to_postalCode = "1010", $to_country = "NZ" )); 
+        
 
 
     }
 
 
     //Function which defines two locations, makes an API Call, then handles the returned error for failure and success. 
-    function example_call_location_service_with_token() {
+    function example_call_location_service_with_token( $from_streetAddress, $from_locality, $from_postalCode, $from_country, $to_streetAddress, $to_locality , $to_postalCode , $to_country ) {
         $aramexToken = get_option('aramex_token');
         $aramexTokenUpdate = 'Bearer ' . $aramexToken; 
 
