@@ -1,11 +1,11 @@
 <?php
+
 /**
  * Plugin Name: Made Snippets Plugin
  * Description: Demonstrates adding custom settings under WooCommerce > Settings > Shipping for Aramex API interactions, including API calls and displaying responses. Also includes consignment operations with the Fastway API.
  * Author: Timothy Lopez
  * Version: 1.0
  */
-
 
 
 if (!defined('ABSPATH')) exit; // Exit if accessed directly
@@ -17,9 +17,10 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 /**MADE Aramex API Handler - Plugin Class */
 
-class MadeSnippetsPlugin {
+class MadeSnippetsPlugin
+{
 
-    
+
     protected static $instance;
 
     //Aramex API Credentiaals and API Details. 
@@ -30,39 +31,41 @@ class MadeSnippetsPlugin {
     private $locationServiceURL = 'https://identity.fastway.org/api/location'; // Replace with actual location service URL
 
 
-    /************ CLASS FUNCTIONS ************/     
+    /************ CLASS FUNCTIONS ************/
     // Create Instance. 
-    public static function init() {
+    public static function init()
+    {
         is_null(self::$instance) && self::$instance = new self;
         return self::$instance;
     }
 
     // Class Constructor Function.
-    private function __construct() {
+    private function __construct()
+    {
         add_filter('woocommerce_get_sections_shipping', array($this, 'add_aramex_settings_section'));
         add_filter('woocommerce_get_settings_shipping', array($this, 'add_aramex_settings'), 10, 2);
         add_filter('woocommerce_admin_settings_sanitize_option', array($this, 'fuzzfilter_aramex_settings'), 10, 3);
         //add_action('admin_init', 'new_function'); // Corrected
-        //add_action('admin_init', fn() => $this->getAccessToken()); 
-        add_action('admin_init', fn() => $this->example_call_location_service_with_token($from_streetAddress = "10 Bridge Avenue", $from_localit = "Te Atatu", $from_postalCode = "0610", $from_country = "NZ", $to_streetAddress = "145 Symonds Street", $to_locality = "Grafton", $to_postalCode = "1010", $to_country = "NZ" )); 
-        
-
-
+        //add_action('admin_init', fn() => $this->refreshAccessToken()); 
+        add_action('admin_init', fn () => $this->fetchLocationDataKey($from_streetAddress = "10 Bridge Avenue", $from_localit = "Te Atatu", $from_postalCode = "0610", $from_country = "NZ", $to_streetAddress = "145 Symonds Street", $to_locality = "Grafton", $to_postalCode = "1010", $to_country = "NZ"));
     }
 
 
 
     //Function which defines two locations, makes an API Call, then handles the returned error for failure and success. 
-    function example_call_location_service_with_token( $from_streetAddress, $from_locality, $from_postalCode, $from_country, $to_streetAddress, $to_locality , $to_postalCode , $to_country ) {
+    function fetchLocationDataKey($from_streetAddress, $from_locality, $from_postalCode, $from_country, $to_streetAddress, $to_locality, $to_postalCode, $to_country)
+    {
         $aramexToken = get_option('aramex_token');
-        $aramexTokenUpdate = 'Bearer ' . $aramexToken; 
+        $aramexTokenUpdate = 'Bearer ' . $aramexToken;
 
-        $address = retrieveWPOrderShippingAddress(61);
+        $address = retrieveWPOrderShippingAddress(105);
         
-        if ( $address ) {
-                    // Define the data array
+        //Check Location Data Being Returned. 
+        //var_dump($address); 
+        if ($address) {
+            // Define the data array
             $locationRequest = [
-                "conTypeId" => 1, 
+                "conTypeId" => 1,
                 "from" => [
                     "streetAddress" => $address['from_streetAddress'],
                     "locality" => $address['from_locality'],
@@ -78,28 +81,27 @@ class MadeSnippetsPlugin {
             ];
         } else {
             // Define the data array
-        $locationRequest = [
-            "conTypeId" => 1, 
-            "from" => [
-                "streetAddress" => $from_streetAddress,
-                "locality" => $from_locality,
-                "postalCode" => $from_postalCode,
-                "country" => $from_country
-            ],
-            "to" => [
-                "streetAddress" => $to_streetAddress,
-                "locality" => $to_locality,
-                "postalCode" => $to_postalCode,
-                "country" => $to_country
-            ]
-        ];
-
+            $locationRequest = [
+                "conTypeId" => 1,
+                "from" => [
+                    "streetAddress" => $from_streetAddress,
+                    "locality" => $from_locality,
+                    "postalCode" => $from_postalCode,
+                    "country" => $from_country
+                ],
+                "to" => [
+                    "streetAddress" => $to_streetAddress,
+                    "locality" => $to_locality,
+                    "postalCode" => $to_postalCode,
+                    "country" => $to_country
+                ]
+            ];
         }
-        
-    
+
+
         // Encode the array into JSON
         $jsonPayload = json_encode($locationRequest);
-    
+
         // Setup the request arguments including the payload and the authorization token
         $args = [
             'body'        => $jsonPayload,
@@ -114,39 +116,40 @@ class MadeSnippetsPlugin {
             'method'      => 'POST',
             'data_format' => 'body',
         ];
-    
+
         // Make the API call
         $response = wp_remote_post('https://api.myfastway.co.nz/api/location', $args);
 
-    
+
         // Check for error in the response and handle it
-    if (is_wp_error($response)) {
-        $error_message = $response->get_error_message();
-        echo "Something went wrong: $error_message";
-    } else {
-        // Decode the response body
-        $responseBody = wp_remote_retrieve_body($response);
-        
-        $data = json_decode($responseBody, true); // Decode into an associative array
-
-        // Output the entire response data
-        echo '<pre>';
-        print_r($responseBody); // Use var_dump($data) if you prefer
-        echo '</pre>';
-        
-
-        // Extract the locationDetailsKey
-        if (isset($data['data']['locationDetails']['locationDetailsKey'])) {
-            $locationDetailsKey = $data['data']['locationDetails']['locationDetailsKey'];
-            echo "Location Details Key: " . $locationDetailsKey;
+        if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+            echo "Something went wrong: $error_message";
         } else {
-            echo "Location Details Key not found in the response.";
+            // Decode the response body
+            $responseBody = wp_remote_retrieve_body($response);
+
+            $data = json_decode($responseBody, true); // Decode into an associative array
+
+            // Output the entire response data
+            echo '<pre>';
+            print_r($responseBody); // Use var_dump($data) if you prefer
+            echo '</pre>';
+
+
+            // Extract the locationDetailsKey
+            if (isset($data['data']['locationDetails']['locationDetailsKey'])) {
+                $locationDetailsKey = $data['data']['locationDetails']['locationDetailsKey'];
+                echo "Location Details Key: " . $locationDetailsKey;
+            } else {
+                echo "Location Details Key not found in the response.";
+            }
         }
+        return $response;
     }
-    return $response; 
-}
-  
-    public function fuzzfilter_aramex_settings($value, $option, $raw_value) {
+
+    public function fuzzfilter_aramex_settings($value, $option, $raw_value)
+    {
         // Validation for the Client ID | 30 Characters and Starts with 'fw-' 
         if ($option['id'] === 'aramex_client_id') {
             if (strlen($raw_value) !== 30 || strpos($raw_value, 'fw-') !== 0) {
@@ -154,7 +157,7 @@ class MadeSnippetsPlugin {
                 return get_option($option['id']); // Prevent saving the new value if validation fails
             }
         }
-    
+
         // Validation for the Client Secret | 36 Characters  
         if ($option['id'] === 'aramex_client_secret') {
             if (strlen($raw_value) !== 36) {
@@ -162,18 +165,20 @@ class MadeSnippetsPlugin {
                 return get_option($option['id']); // Prevent saving the new value if validation fails
             }
         }
-    
+
         return $value; // Return the new value if all validations pass
     }
-    
+
     /************* ADD ARAMEX PLUGIN SETTINGS *************/
 
-    public function add_aramex_settings_section($sections) {
+    public function add_aramex_settings_section($sections)
+    {
         $sections['aramex'] = __('Aramex', 'text-domain');
         return $sections;
     }
 
-    public function add_aramex_settings($settings, $current_section) {
+    public function add_aramex_settings($settings, $current_section)
+    {
         if ($current_section == 'aramex') {
             $aramex_settings = array(
                 array(
@@ -219,7 +224,7 @@ class MadeSnippetsPlugin {
                     'custom_attributes' => array('readonly' => 'readonly'),
                     'desc_tip' => true,
                 ),
-                
+
 
                 array(
                     'type' => 'sectionend',
@@ -227,70 +232,65 @@ class MadeSnippetsPlugin {
                 ),
             );
             return array_merge($settings, $aramex_settings);
-        }    
+        }
     }
 
-    
-    private function getAccessToken() {
+
+    private function refreshAccessToken()
+    {
         //Prepare Variables for API Call
         $client_id = get_option('aramex_client_id');
         $client_secret = get_option('aramex_client_secret');
         $country = get_option('aramex_country');
-    
+
         // Update the scope based on the selected country
         $scope = 'fw-fl2-api-nz'; // Default scope
         if ($country === 'Australia') {
             $scope = 'fw-fl2-api-au';
         }
-    
+
         $data = http_build_query([
             'grant_type'    => 'client_credentials',
             'client_id'     => $client_id,
             'client_secret' => $client_secret,
             'scope'         => $scope,
         ]);
-    
+
         $ch = curl_init($this->tokenURL);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
         $response = curl_exec($ch);
-    
+
         // Debugging: Display request and response on screen
         echo '<pre>';
         echo 'Request URL: ' . $this->tokenURL . PHP_EOL;
         echo 'Request Data: ' . print_r($data, true) . PHP_EOL;
         echo 'Response: ' . print_r($response, true) . PHP_EOL;
         echo '</pre>';
-    
+
         curl_close($ch);
-    
+
         if (!$response) {
             echo 'Failed to get response';
             return false;
         }
-    
+
         $responseArray = json_decode($response, true);
         if (isset($responseArray['access_token'])) {
-            echo 'Access Token: ' . $responseArray['access_token']; 
+            echo 'Access Token: ' . $responseArray['access_token'];
             update_option('aramex_token', $responseArray['access_token']);
-
-            
-
             return $responseArray['access_token'];
-
         } else {
             echo 'Access token not found in response';
             return false;
         }
     }
-
-
-    
 }
 
-function new_function() {
+function new_function()
+{
 
     $url = "https://api.myfastway.com.au/api/location";
     $location_args = [
@@ -329,22 +329,17 @@ function new_function() {
 
     $post_create = wp_remote_post($url, $args);
     // Test calling the updateOrderPageShippingMeta. 
-    $newVariable = mainPluginFeatures("Test", "Test", "Test"); 
+    $newVariable = mainPluginFeatures("Test", "Test", "Test");
 
-    updateExistingWCOrderMeta($order_id = 56 , $carrier_id = '1111111111', $tracking_number_id = '9999999999', $shipping_label_url = 'google.com');
+    updateExistingWCOrderMeta($order_id = 56, $carrier_id = '1111111111', $tracking_number_id = '9999999999', $shipping_label_url = 'google.com');
+
+    $testing_Retreive = retrieveWPOrderShippingAddress(61); 
 
 
     echo "‹pre>";
     //print_r($post_create);
     print_r($newVariable);
-
-    
-
 }
-
-
-
-
 
 /******************************** */
 
@@ -353,32 +348,34 @@ function new_function() {
 //    return $carrier_id, $tracking_number_id, $shipping_label_url; 
 //}
 
-function mainPluginFeatures( $carrier_id, $tracking_number_id, $shipping_label_url){
+function mainPluginFeatures($carrier_id, $tracking_number_id, $shipping_label_url)
+{
 
-    
+
     //addNewShippingCoSignment(); 
-    return updateOrderPageShippingMeta( $carrier_id, $tracking_number_id, $shipping_label_url ); 
+    return updateOrderPageShippingMeta($carrier_id, $tracking_number_id, $shipping_label_url);
     //addPurolatorPluginTabel(); 
 
-    
+
 }
 
-function updateOrderPageShippingMeta( $carrier_id, $tracking_number_id, $shipping_label_url ){
-    
-    $TempVariable = 'TestingupdateOrderPageShippingMeta' . $carrier_id . $tracking_number_id .  $shipping_label_url; 
-    return $TempVariable; 
+function updateOrderPageShippingMeta($carrier_id, $tracking_number_id, $shipping_label_url)
+{
+
+    $TempVariable = 'TestingupdateOrderPageShippingMeta' . $carrier_id . $tracking_number_id .  $shipping_label_url;
+    return $TempVariable;
 }
 
 
 // Add Custom Meta Box On HPOS Enabled Orders Page
 use Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController;
 
-add_action( 'add_meta_boxes', function() {
+add_action('add_meta_boxes', function () {
     // Determine the correct screen ID based on whether custom orders table usage is enabled
     $screen_id = wc_get_container()->get(
         CustomOrdersTableController::class
     )->custom_orders_table_usage_is_enabled()
-        ? wc_get_page_screen_id( 'shop-order' )
+        ? wc_get_page_screen_id('shop-order')
         : 'shop_order';
 
     // Add the meta box with the determined screen ID
@@ -390,39 +387,40 @@ add_action( 'add_meta_boxes', function() {
     );
 });
 
-function aramex_shipping_metabox_callback( $post_or_order_object ) {
+function aramex_shipping_metabox_callback($post_or_order_object)
+{
     // Determine whether the passed object is a WP_Post or an order object
-    $order = ( $post_or_order_object instanceof WP_Post )
-        ? wc_get_order( $post_or_order_object->ID )
+    $order = ($post_or_order_object instanceof WP_Post)
+        ? wc_get_order($post_or_order_object->ID)
         : $post_or_order_object;
 
     // If no order is found, return early
-    if ( ! $order ) {
+    if (!$order) {
         return;
     }
 
     // Format and display the values as required
-    $shipping_url = $order->get_meta( '_made_aramex_shipping_label_url' );
-    $carrier_id = $order->get_meta( '_made_aramex_carrier_id' );
-    $tracking_number = $order->get_meta( '_made_aramex_tracking_number_id' );
+    $shipping_url = $order->get_meta('_made_aramex_shipping_label_url');
+    $carrier_id = $order->get_meta('_made_aramex_carrier_id');
+    $tracking_number = $order->get_meta('_made_aramex_tracking_number_id');
 
     // Check if shipping URL is present and display as a clickable link
-    if ( ! empty( $shipping_url ) ) {
-        echo "Shipping Label URL: <a href='" . esc_url( $shipping_url ) . "' target='_blank'>Click here to view the shipping label</a><br>";
+    if (!empty($shipping_url)) {
+        echo "Shipping Label URL: <a href='" . esc_url($shipping_url) . "' target='_blank'>Click here to view the shipping label</a><br>";
     } else {
         echo "Shipping Label URL: Not available<br>";
     }
 
     // Display Carrier ID
-    if ( ! empty( $carrier_id ) ) {
-        echo "Carrier ID: " . esc_html( $carrier_id ) . "<br>";
+    if (!empty($carrier_id)) {
+        echo "Carrier ID: " . esc_html($carrier_id) . "<br>";
     } else {
         echo "Carrier ID: Not available<br>";
     }
 
     // Display Tracking Number
-    if ( ! empty( $tracking_number ) ) {
-        echo "Tracking Number: " . esc_html( $tracking_number ) . "<br>";
+    if (!empty($tracking_number)) {
+        echo "Tracking Number: " . esc_html($tracking_number) . "<br>";
     } else {
         echo "Tracking Number: Not available<br>";
     }
@@ -430,11 +428,12 @@ function aramex_shipping_metabox_callback( $post_or_order_object ) {
 
 
 //This Function Is Use to Update the Order_id
-function updateExistingWCOrder( $order_id ) {
+function updateExistingWCOrder($order_id)
+{
     // Attempt to fetch the existing order with ID 61
-    
+
     $order = wc_get_order($order_id);
-    
+
     // Check if the order exists
     if (!$order) {
         // Optionally, you can log this error or handle it as needed
@@ -493,11 +492,12 @@ function updateExistingWCOrder( $order_id ) {
 
 //This Function Is Use to Update the Meta Data for the Aramex Plugin. 
 /* Inputs : Order ID, Carrier ID, Tracking Number and Shipping Label URL*/
-function updateExistingWCOrderMeta( $order_id , $carrier_id, $tracking_number_id, $shipping_label_url ) {
+function updateExistingWCOrderMeta($order_id, $carrier_id, $tracking_number_id, $shipping_label_url)
+{
     // Attempt to fetch the existing order with ID 61
-    
+
     $order = wc_get_order($order_id);
-    
+
     // Check if the order exists
     if (!$order) {
         // Optionally, you can log this error or handle it as needed
@@ -514,34 +514,35 @@ function updateExistingWCOrderMeta( $order_id , $carrier_id, $tracking_number_id
     return $order;
 }
 
-    /* Function to retrieve WP Order Shipping Address */ 
-function retrieveWPOrderShippingAddress($orderId) {
-        // Load the order
-        $order = wc_get_order($orderId);
-        if (!$order) {
-            return false; // Order not found
-        }
-    
-        // Extract shipping address (assuming 'from' is the shipping address)
-        $from_streetAddress = "10 Bridge Avenue"; 
-        $from_locality = "Te Atatu South"; 
-        $from_postalCode = "0610"; 
-        $from_country = "NZ"; 
-    
-        // Extract billing address (assuming 'to' is the billing address for this example)
-        $to_streetAddress = $order->get_billing_address_1();
-        $to_locality = $order->get_shipping_city();
-        $to_postalCode = $order->get_shipping_postcode();
-        $to_country = $order->get_shipping_country();
-    
-        return [
-            'from_streetAddress' => $from_streetAddress,
-            'from_locality' => $from_locality,
-            'from_postalCode' => $from_postalCode,
-            'from_country' => $from_country,
-            'to_streetAddress' => $to_streetAddress,
-            'to_locality' => $to_locality,
-            'to_postalCode' => $to_postalCode,
-            'to_country' => $to_country,
-        ];
+/* Function to retrieve WP Order Shipping Address */
+function retrieveWPOrderShippingAddress($orderId)
+{
+    // Load the order
+    $order = wc_get_order($orderId);
+    if (!$order) {
+        return false; // Order not found
     }
+
+    // Extract shipping address (assuming 'from' is the shipping address)
+    $from_streetAddress = "10 Bridge Avenue";
+    $from_locality = "Te Atatu South";
+    $from_postalCode = "0610";
+    $from_country = "NZ";
+
+    // Extract billing address (assuming 'to' is the billing address for this example)
+    $to_streetAddress = $order->get_billing_address_1();
+    $to_locality = $order->get_shipping_city();
+    $to_postalCode = $order->get_shipping_postcode();
+    $to_country = $order->get_shipping_country();
+
+    return [
+        'from_streetAddress' => $from_streetAddress,
+        'from_locality' => $from_locality,
+        'from_postalCode' => $from_postalCode,
+        'from_country' => $from_country,
+        'to_streetAddress' => $to_streetAddress,
+        'to_locality' => $to_locality,
+        'to_postalCode' => $to_postalCode,
+        'to_country' => $to_country,
+    ];
+}
