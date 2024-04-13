@@ -47,7 +47,7 @@ class MadeSnippetsPlugin
         add_filter('woocommerce_admin_settings_sanitize_option', array($this, 'fuzzfilter_aramex_settings'), 10, 3);
         //add_action('admin_init', 'new_function'); // Corrected
         //add_action('admin_init', fn() => $this->refreshAccessToken()); 
-        add_action('admin_init', fn () => $this->fetchLocationDataKey($from_streetAddress = "10 Bridge Avenue", $from_localit = "Te Atatu", $from_postalCode = "0610", $from_country = "NZ", $to_streetAddress = "145 Symonds Street", $to_locality = "Grafton", $to_postalCode = "1010", $to_country = "NZ"));
+        //add_action('admin_init', fn () => $this->fetchLocationDataKey($from_streetAddress = "10 Bridge Avenue", $from_localit = "Te Atatu", $from_postalCode = "0610", $from_country = "NZ", $to_streetAddress = "145 Symonds Street", $to_locality = "Grafton", $to_postalCode = "1010", $to_country = "NZ"));
 
         add_action('admin_init', [$this, 'handle_token_refresh']);
 
@@ -66,7 +66,7 @@ class MadeSnippetsPlugin
 
 
     //Function which defines two locations, makes an API Call, then handles the returned error for failure and success. 
-    function fetchLocationDataKey($from_streetAddress, $from_locality, $from_postalCode, $from_country, $to_streetAddress, $to_locality, $to_postalCode, $to_country)
+    public static function fetchLocationDataKey($from_streetAddress, $from_locality, $from_postalCode, $from_country, $to_streetAddress, $to_locality, $to_postalCode, $to_country)
     {
         $aramexToken = get_option('aramex_token');
         $aramexTokenUpdate = 'Bearer ' . $aramexToken;
@@ -158,6 +158,13 @@ class MadeSnippetsPlugin
                 echo "Location Details Key not found in the response.";
             }
         }
+        //$order_id = 105; 
+        //$order = wc_get_order($order_id);
+        //$order->update_meta_data('_employee_code', '111');
+        //$order->save();
+
+
+
         return $response;
     }
 
@@ -454,6 +461,69 @@ function aramex_shipping_metabox_callback($post_or_order_object)
     } else {
         echo "Tracking Number: Not available<br>";
     }
+
+    // Add a button to fetch location data
+    //echo '<form action="" method="post" id="get-estimate">';
+    //echo '<input type="hidden" name="action" value="test_function">';
+    //echo '<input type="hidden" name="fetch_location_data" value="1">';
+    //echo '<button type="submit" class="button button-primary">Get Estimate Original</button>';
+    echo '</form>';
+
+    echo '<form method="post" action="' . admin_url('admin-post.php') . '">';
+    echo '<input type="hidden" name="action" value="wpse_79898">';
+    //echo '<input type="text" name="test" value="">';
+    echo submit_button('Get Estimate Updated');
+    echo '</form>';
+    
+}
+
+add_action('admin_post_wpse_79898', 'wpse_79898_test');
+
+function wpse_79898_test() {
+    TestFunction();
+    
+
+    // Redirect back to the originating page
+    $redirect_url = wp_get_referer() ? wp_get_referer() : home_url();
+    wp_safe_redirect($redirect_url);
+    exit; // Make sure to terminate the script
+}
+
+add_action('wp_ajax_test_function', 'TestFunction'); // If logged in
+add_action('wp_ajax_nopriv_test_function', 'TestFunction'); // If not logged in
+
+function TestFunction() {
+    $order_id = 105;
+    $order = wc_get_order($order_id);
+    if ($order) {
+        $order->update_meta_data('_employee_code', 'Testing Function Firing 123456');
+        $order->save();
+        // Echo a success message if needed
+        // echo "Success123"; - Consider if you want this to be part of the AJAX response
+    } else {
+        // Echo an error message if needed
+        // echo "Order Not Found"; - Consider if you want this to be part of the AJAX response
+    }
+    // Use wp_die() for AJAX handlers to stop further execution and return a proper response
+    if (defined('DOING_AJAX') && DOING_AJAX) { 
+        wp_die(); // Important for AJAX to stop further execution and return proper response
+    }
+}
+
+
+function enqueue_custom_scripts() {
+    wp_enqueue_script('custom-js', '../path_to_your_script.js', array('jquery'), null, true);
+    wp_localize_script('custom-js', 'ajaxurl', admin_url('admin-ajax.php'));
+}
+add_action('wp_enqueue_scripts', 'enqueue_custom_scripts');
+
+
+function TestFunctionold(){
+    $order_id = 105; 
+    $order = wc_get_order($order_id);
+    $order->update_meta_data('_employee_code', 'ABC123');
+    $order->save();
+    echo "This is a Test Function"; 
 }
 
 
