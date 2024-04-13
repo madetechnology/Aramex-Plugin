@@ -48,7 +48,20 @@ class MadeSnippetsPlugin
         //add_action('admin_init', 'new_function'); // Corrected
         //add_action('admin_init', fn() => $this->refreshAccessToken()); 
         add_action('admin_init', fn () => $this->fetchLocationDataKey($from_streetAddress = "10 Bridge Avenue", $from_localit = "Te Atatu", $from_postalCode = "0610", $from_country = "NZ", $to_streetAddress = "145 Symonds Street", $to_locality = "Grafton", $to_postalCode = "1010", $to_country = "NZ"));
+
+        add_action('admin_init', [$this, 'handle_token_refresh']);
+
     }
+
+    public function handle_token_refresh() {
+        if (isset($_GET['refresh_token']) && $_GET['refresh_token'] == 'true' && current_user_can('manage_options')) {
+            $this->refreshAccessToken();
+            add_action('admin_notices', function() {
+                echo '<div class="updated"><p>Access token refreshed successfully.</p></div>';
+            });
+        }
+    }
+
 
 
 
@@ -215,21 +228,37 @@ class MadeSnippetsPlugin
                     ),
                     'desc_tip' => true,
                 ),
-                array(
-                    'title'    => __('Aramex Token', 'text-domain'),
-                    'desc'     => __('This is the token received after successful authentication.', 'text-domain'),
-                    'id'       => 'aramex_token',
-                    'type'     => 'text',
-                    'default'  => get_option('aramex_token', 'Click "Test Authentication" to generate a token'),
-                    'custom_attributes' => array('readonly' => 'readonly'),
-                    'desc_tip' => true,
-                ),
-
 
                 array(
                     'type' => 'sectionend',
                     'id'   => 'aramex_api_settings_end'
                 ),
+                array(
+                'title' => __('Refresh Access Token', 'text-domain'),
+                'type'  => 'title',
+                'desc'  => __('Use this button to manually refresh the access token.', 'text-domain'),
+                'id'    => 'aramex_refresh_token'
+            ),
+            array(
+                'title' => '',
+                'desc'  => '<a href="' . esc_url( admin_url('admin.php?page=wc-settings&tab=shipping&section=aramex&refresh_token=true') ) . '" class="button-secondary">Refresh Token</a>',
+                'type'  => 'title',
+                'id'    => 'refresh_token_button'
+            ),
+            array(
+                'title'    => __('Aramex Token', 'text-domain'),
+                'desc'     => __('This is the token received after successful authentication.', 'text-domain'),
+                'id'       => 'aramex_token',
+                'type'     => 'text',
+                'default'  => get_option('aramex_token', 'Click "Test Authentication" to generate a token'),
+                'custom_attributes' => array('readonly' => 'readonly'),
+                'desc_tip' => true,
+            ),
+
+            array(
+                'type' => 'sectionend',
+                'id'   => 'aramex_refresh_token_end'
+            ),
             );
             return array_merge($settings, $aramex_settings);
         }
@@ -291,6 +320,7 @@ class MadeSnippetsPlugin
 
 function new_function()
 {
+
 
     $url = "https://api.myfastway.com.au/api/location";
     $location_args = [
