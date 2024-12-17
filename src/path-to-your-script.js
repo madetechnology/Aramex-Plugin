@@ -1,24 +1,19 @@
 jQuery(document).ready(function($) {
-    $('#testForm button').on('click', function(e) {
-        e.preventDefault(); // Prevent default form submission
+  $('#aramex-test-connection-btn').on('click', function() {
+    var status = $('#aramex-test-connection-status');
+    status.html('<span style="color:blue;">Testing connection...</span>');
 
-        $.ajax({
-            url: aramexAjax.ajaxUrl, // Localized in PHP
-            type: 'POST',
-            data: {
-                action: 'test_connection', // The WordPress action
-                security: aramexAjax.nonce // The nonce
-            },
-            success: function(response) {
-                if (response.success) {
-                    alert('Success: ' + response.data.message);
-                } else {
-                    alert('Error: ' + response.data.message);
-                }
-            },
-            error: function(xhr, status, error) {
-                alert('AJAX Request Failed: ' + error);
-            }
-        });
+    $.post(aramexAjax.ajax_url, {
+      action: 'aramex_shipping_aunz_test_connection_ajax',
+      nonce: aramexAjax.nonce
+    }, function(response) {
+      if (response.success) {
+        status.html('<span style="color:green;">' + response.data.message + '</span>');
+      } else {
+        status.html('<span style="color:red;">' + response.data.message + '</span>');
+      }
+    }).fail(function() {
+      status.html('<span style="color:red;">Error testing connection. Please try again.</span>');
     });
+  });
 });
