@@ -75,7 +75,7 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 			}
 		}
 
-		private function get_access_token() {
+		public function get_access_token() {
 			return aramex_shipping_aunz_get_access_token( $this->api_key, $this->secret, $this->origin_country );
 		}
 

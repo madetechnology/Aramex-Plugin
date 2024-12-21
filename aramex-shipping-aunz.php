@@ -1,7 +1,6 @@
 <?php
 /**
  * Plugin Name: Aramex Shipping Aunz
- * Description: Adds Aramex Shipping functionality to WooCommerce for accurate shipping calculations and label generation.
  * Version: 1.0.0
  * Author: ADSO Developers
  * Author URI: https://adso.co.nz
@@ -14,70 +13,66 @@
  * @package aramex_shipping_aunz
  */
 
-// Ensure the file is being accessed from within WordPress, exit if not.
 defined( 'ABSPATH' ) || exit;
 
-// Define constants for the plugin file, directory path, and URL if not already defined.
 if ( ! defined( 'ARAMEX_PLUGIN_FILE' ) ) {
-	define( 'ARAMEX_PLUGIN_FILE', __FILE__ ); // Path to the main plugin file.
-	define( 'ARAMEX_PLUGIN_DIR', plugin_dir_path( __FILE__ ) ); // Directory path of the plugin.
-	define( 'ARAMEX_PLUGIN_URL', plugin_dir_url( __FILE__ ) );  // URL of the plugin directory.
+	define( 'ARAMEX_PLUGIN_FILE', __FILE__ );
+	define( 'ARAMEX_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+	define( 'ARAMEX_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 }
 
-// Include helper files and functions.
-// These files contain functions for admin notices, AJAX handlers, and settings.
-require_once ARAMEX_PLUGIN_DIR . 'src/functions-helpers.php';       // General helper functions.
-require_once ARAMEX_PLUGIN_DIR . 'src/functions-admin-notices.php'; // Admin notices handling.
-require_once ARAMEX_PLUGIN_DIR . 'src/functions-ajax.php';          // AJAX-related functions.
-require_once ARAMEX_PLUGIN_DIR . 'src/functions-settings.php';      // Settings page logic.
+// Include helpers and other functions that don't depend on WC_Shipping_Method
+require_once ARAMEX_PLUGIN_DIR . 'src/functions-helpers.php';
+require_once ARAMEX_PLUGIN_DIR . 'src/functions-admin-notices.php';
+require_once ARAMEX_PLUGIN_DIR . 'src/functions-ajax.php';
+require_once ARAMEX_PLUGIN_DIR . 'src/functions-settings.php';
 
-// Register an AJAX action for testing API connections.
 add_action( 'wp_ajax_aramex_shipping_aunz_test_connection_ajax', 'aramex_shipping_aunz_test_connection_ajax_callback' );
-
+add_action( 'wp_ajax_create_consignment_action', 'aramex_create_consignment_callback' );
 /**
- * Initialize the plugin and add WooCommerce settings tabs and the shipping method.
- *
- * Hooks and filters are used to:
- * - Add custom shipping settings sections and fields in WooCommerce settings.
- * - Initialize the shipping method logic when WooCommerce is ready.
+ * Initialize the plugin and add WooCommerce settings tab and shipping method.
  */
 function aramex_shipping_aunz_init() {
-	// Add a custom section to the WooCommerce Shipping settings.
 	add_filter( 'woocommerce_get_sections_shipping', 'aramex_shipping_aunz_add_settings_section' );
-
-	// Add settings fields within the custom section created above.
 	add_filter( 'woocommerce_get_settings_shipping', 'aramex_shipping_aunz_get_settings', 10, 2 );
 
-	// Load the shipping method class after WooCommerce shipping initializes.
+	// Delay loading the shipping class until WooCommerce shipping is initialized
 	add_action( 'woocommerce_shipping_init', 'aramex_shipping_aunz_shipping_method_init' );
-
-	// Register the shipping method so WooCommerce recognizes it.
 	add_filter( 'woocommerce_shipping_methods', 'aramex_shipping_aunz_add_my_shipping_method' );
+
+
 }
 
-// Hook the initialization function to the 'plugins_loaded' action.
-// Ensures all WordPress and WooCommerce functionalities are loaded before initializing.
 add_action( 'plugins_loaded', 'aramex_shipping_aunz_init' );
+add_action( 'woocommerce_order_item_add_action_buttons', 'add_custom_button_to_order_page', 10, 1 );
+//add_action( 'woocommerce_order_item_add_action_buttons', 'add_custom_delete_button_to_order_page', 10, 1 );
+
 
 /**
- * Load the shipping method class.
- *
- * This function loads the My_Shipping_Method class that defines the shipping logic.
- * It is only loaded after WooCommerce's shipping functionality is initialized.
+ * Load the shipping method class after WooCommerce shipping has initialized.
  */
 function aramex_shipping_aunz_shipping_method_init() {
-	// Include the shipping method class file.
+	// Now we can safely include the shipping method class.
 	require_once ARAMEX_PLUGIN_DIR . 'src/class-aramex-shipping-method.php';
 }
 
-/**
- * Add the custom shipping method to WooCommerce.
- *
- * @param array $methods Existing registered WooCommerce shipping methods.
- * @return array Modified list of shipping methods including 'My_Shipping_Method'.
- */
 function aramex_shipping_aunz_add_my_shipping_method( $methods ) {
-	// Add 'My_Shipping_Method' class to the available shipping methods.
 	$methods['my_shipping_method'] = 'My_Shipping_Method';
 	return $methods;
 }
+
+
+
+function add_custom_button_to_order_page( $order ) {
+    // Ensure the $order object is valid and is an instance of WC_Order
+    if ( ! $order || ! is_a( $order, 'WC_Order' ) ) {
+        return;
+    }
+
+    // Add the custom button
+    echo '<button type="button" class="button custom-action-button" id="custom-action-button" data-order-id="' . esc_attr( $order->get_id() ) . '">' . __( 'Create Consignment', 'aramex-shipping-aunz' ) . '</button>';
+
+    // Include a nonce for security
+    wp_nonce_field( 'create_consignment_action', 'create_consignment_nonce' );
+}
+

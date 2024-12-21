@@ -17,3 +17,39 @@ jQuery(document).ready(function($) {
     });
   });
 });
+
+jQuery( document ).ready( function( $ ) {
+      
+    $( '#custom-action-button' ).on( 'click', function() {
+        const orderId = $( this ).data( 'order-id' );
+        console.log('Button clicked. Order ID:', orderId); // Debugging: Log the Order ID.
+
+        $.ajax({
+            url: customAdminData.ajax_url,
+            method: 'POST',
+            data: {
+                action: 'create_consignment_action',
+                nonce: customAdminData.nonce,
+                order_id: orderId,
+            },
+            beforeSend: function() {
+                console.log('AJAX request is about to be sent.'); // Debugging: Log before the request is sent.
+                alert( 'Processing your request...' );
+            },
+            success: function( response ) {
+                console.log('AJAX request succeeded. Response:', response); // Debugging: Log the successful response.
+
+                if ( response.success ) {
+                    alert( response.data.message );
+                } else {
+                    alert( response.data.message );
+                }
+            },
+            error: function( jqXHR, textStatus, errorThrown ) {
+                console.log('AJAX request failed. Error:', errorThrown); // Debugging: Log the error.
+                console.log('Response text:', jqXHR.responseText); // Debugging: Log the response text.
+                alert( 'An error occurred. Please try again.' );
+            },
+        });
+    });
+});

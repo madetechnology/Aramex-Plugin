@@ -107,3 +107,24 @@ function aramex_shipping_aunz_admin_scripts( $hook ) {
 	) );
 }
 add_action( 'admin_enqueue_scripts', 'aramex_shipping_aunz_admin_scripts' );
+
+
+function aramex_enqueue_scripts( $hook ) {
+    if ( 'woocommerce_page_wc-orders' !== $hook ) {
+        return;
+    }
+
+    wp_enqueue_script(
+        'aramex-custom-actions',
+        ARAMEX_PLUGIN_URL . 'src/path-to-your-script.js', // Path to your JS file
+        array( 'jquery' ),
+        '1.0.0',
+        true
+    );
+
+    wp_localize_script( 'aramex-custom-actions', 'customAdminData', array(
+        'ajax_url' => admin_url( 'admin-ajax.php' ),
+        'nonce'    => wp_create_nonce( 'aramex_create_consignment_nonce' ),
+    ) );
+}
+add_action( 'admin_enqueue_scripts', 'aramex_enqueue_scripts' );
