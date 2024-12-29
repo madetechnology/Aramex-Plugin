@@ -53,3 +53,40 @@ jQuery( document ).ready( function( $ ) {
         });
     });
 });
+
+
+jQuery( document ).ready( function( $ ) {
+      
+  $( '#custom-action-delete-button' ).on( 'click', function() {
+      const orderId = $( this ).data( 'order-id' );
+      console.log('Delete Button clicked. Order ID:', orderId); // Debugging: Log the Order ID.
+
+      $.ajax({
+          url: customAdminDataDelete.ajax_url,
+          method: 'POST',
+          data: {
+              action: 'delete_consignment_action',
+              nonce: customAdminDataDelete.nonce,
+              order_id: orderId,
+          },
+          beforeSend: function() {
+              console.log('Delete AJAX request is about to be sent.'); // Debugging: Log before the request is sent.
+              alert( 'Processing your request...' );
+          },
+          success: function( response ) {
+              console.log('Delete AJAX request succeeded. Response:', response); // Debugging: Log the successful response.
+
+              if ( response.success ) {
+                  alert( response.data.message );
+              } else {
+                  alert( response.data.message );
+              }
+          },
+          error: function( jqXHR, textStatus, errorThrown ) {
+              console.log('AJAX request failed. Error:', errorThrown); // Debugging: Log the error.
+              console.log('Response text:', jqXHR.responseText); // Debugging: Log the response text.
+              alert( 'An error occurred. Please try Delete again.' );
+          },
+      });
+  });
+});

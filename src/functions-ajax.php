@@ -117,3 +117,86 @@ function aramex_create_consignment_callback() {
     }
 }
 add_action( 'wp_ajax_aramex_create_consignment', 'aramex_create_consignment_callback' );
+
+function aramex_delete_consignment_callback() {
+    // Verify the nonce
+    check_ajax_referer('aramex_delete_consignment_nonce', 'nonce');
+
+    // Get the order ID
+    $order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
+    if (!$order_id) {
+        wp_send_json_error(array('message' => 'Invalid order ID.'));
+    }
+
+    // Get the order object
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        wp_send_json_error(array('message' => 'Order not found.'));
+    }
+
+    // Check if the order has the 'aramex_conId' meta field
+    $con_id = $order->get_meta('aramex_conId');
+    if (!$con_id) {
+        wp_send_json_error(array('message' => 'Consignment ID not found for this order.'));
+    }
+
+    // Include the shipping method class
+    require_once ARAMEX_PLUGIN_DIR . 'src/class-aramex-shipping-method.php';
+
+    // Get the access token
+    $shipping_method = new My_Shipping_Method();
+    $access_token = $shipping_method->get_access_token();
+
+    if (!$access_token) {
+        wp_send_json_error(array('message' => 'Failed to retrieve access token.'));
+    }
+
+    // Prepare the API endpoint and delete reason
+    $delete_reason_id = 3; // Reason ID for "Created in Error"
+    $api_endpoint = "https://api.myfastway.co.nz/api/consignments/{$con_id}/reason/{$delete_reason_id}";
+
+    // Make the DELETE API request
+    $response = wp_remote_request($api_endpoint, array(
+        'method'    => 'DELETE',
+        'headers'   => array(
+            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer ' . $access_token,
+        ),
+    ));
+
+    // Handle the API response
+    if (is_wp_error($response)) {
+        wp_send_json_error(array('message' => $response->get_error_message()));
+    }
+
+    $response_code = wp_remote_retrieve_response_code($response);
+    $response_body = wp_remote_retrieve_body($response);
+    $response_data = json_decode($response_body, true);
+
+    // Log response for debugging
+    error_log('Response Code: ' . $response_code);
+    error_log('Response Body: ' . print_r($response_data, true));
+
+    // Check if the response code indicates success
+    if ($response_code === 204 || ($response_code >= 200 && $response_code < 300)) {
+        // Remove the 'aramex_conId' meta field
+        $order->delete_meta_data('aramex_conId');
+        $order->save();
+
+        // Add a note to the order
+        $order->add_order_note(__('Consignment deleted successfully.', 'aramex-shipping-aunz'));
+
+        wp_send_json_success(array('message' => 'Consignment deleted successfully.'));
+    } else {
+        // Handle unexpected response
+        $error_message = isset($response_data['message']) ? $response_data['message'] : 'Unexpected error occurred.';
+        wp_send_json_error(array(
+            'message' => 'Failed to delete consignment.',
+            'error_details' => $error_message,
+            'response_code' => $response_code,
+        ));
+    }
+}
+
+
+add_action( 'wp_ajax_aramex_delete_consignment', 'aramex_delete_consignment_callback' );
