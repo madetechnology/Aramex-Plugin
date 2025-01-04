@@ -131,5 +131,10 @@ function aramex_enqueue_scripts( $hook ) {
         'ajax_url' => admin_url( 'admin-ajax.php' ),
         'nonce'    => wp_create_nonce( 'aramex_delete_consignment_nonce' ),
     ) );
+
+	wp_localize_script( 'aramex-custom-actions', 'customAdminDataPrint', array(
+        'ajax_url' => admin_url( 'admin-ajax.php' ),
+        'nonce'    => wp_create_nonce( 'aramex_print_consignment_nonce' ),
+    ) );
 }
 add_action( 'admin_enqueue_scripts', 'aramex_enqueue_scripts' );

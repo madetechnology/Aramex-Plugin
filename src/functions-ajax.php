@@ -200,3 +200,73 @@ function aramex_delete_consignment_callback() {
 
 
 add_action( 'wp_ajax_aramex_delete_consignment', 'aramex_delete_consignment_callback' );
+
+
+function aramex_print_label_callback() {
+    // Verify the nonce
+    check_ajax_referer('aramex_print_consignment_nonce', 'nonce');
+
+    // Get the order ID
+    $order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
+    if (!$order_id) {
+        wp_send_json_error(array('message' => 'Invalid order ID.'));
+    }
+
+    // Get the order object
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        wp_send_json_error(array('message' => 'Order not found.'));
+    }
+
+    // Check if the order has the 'aramex_conId' meta field
+    $con_id = $order->get_meta('aramex_conId');
+    if (!$con_id) {
+        wp_send_json_error(array('message' => 'Consignment ID not found.'));
+    }
+
+    // Include the shipping method class
+    require_once ARAMEX_PLUGIN_DIR . 'src/class-aramex-shipping-method.php';
+    $shipping_method = new My_Shipping_Method();
+    $access_token = $shipping_method->get_access_token();
+
+    if (!$access_token) {
+        wp_send_json_error(array('message' => 'Failed to retrieve access token.'));
+    }
+
+    // Prepare the API endpoint
+    $api_endpoint = "https://api.myfastway.co.nz/api/consignments/{$con_id}/labels?pageSize=4x6";
+
+    // Make the GET API request
+    $response = wp_remote_get($api_endpoint, array(
+        'headers' => array(
+            'Authorization' => 'Bearer ' . $access_token,
+            'Content-Type'  => 'application/json',
+        ),
+    ));
+
+    if (is_wp_error($response)) {
+        wp_send_json_error(array('message' => $response->get_error_message()));
+    }
+
+    $response_code = wp_remote_retrieve_response_code($response);
+    $response_body = wp_remote_retrieve_body($response);
+
+    // Check if the response code indicates success
+    if ($response_code === 200) {
+        // Save the PDF file to the uploads directory
+        $upload_dir = wp_upload_dir();
+        $file_path = $upload_dir['path'] . "/label_{$con_id}.pdf";
+
+        if (file_put_contents($file_path, $response_body)) {
+            $file_url = $upload_dir['url'] . "/label_{$con_id}.pdf";
+
+            // Return the file URL to the client
+            wp_send_json_success(array('message' => 'Label fetched successfully.', 'label_url' => $file_url));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to save label file.'));
+        }
+    } else {
+        wp_send_json_error(array('message' => 'Failed to fetch label.', 'response_code' => $response_code));
+    }
+}
+add_action('wp_ajax_print_label_action', 'aramex_print_label_callback');
