@@ -22,67 +22,83 @@ function aramex_shipping_aunz_test_connection_field() {
 add_action( 'woocommerce_admin_field_aramex_test_connection', 'aramex_shipping_aunz_test_connection_field' );
 
 /**
+ * Custom field type to display the logo image.
+ */
+function aramex_shipping_aunz_logo_field() {
+    echo '<tr valign="top">
+            <th scope="row" class="titledesc"></th>
+            <td class="forminp">
+                <img src="' . plugins_url( 'aramex_ship_pro_logo.png', __FILE__ ) . '" alt="Aramex Logo" style="max-width:200px; margin-top:20px;">
+            </td>
+          </tr>';
+}
+add_action( 'woocommerce_admin_field_aramex_logo', 'aramex_shipping_aunz_logo_field' );
+/**
  * Add settings fields to the Aramex Shipping section.
  */
 function aramex_shipping_aunz_get_settings( $settings, $current_section ) {
-	if ( 'aramex_shipping_aunz' === $current_section ) {
-		$settings = array(
-			array(
-				'title' => __( 'Aramex Shipping Settings', 'aramex-shipping-aunz' ),
-				'type'  => 'title',
-				'id'    => 'aramex_shipping_aunz_settings',
-			),
-			array(
-				'title'       => __( 'API Key', 'aramex-shipping-aunz' ),
-				'type'        => 'text',
-				'desc'        => __( 'Enter your Aramex API Key.', 'aramex-shipping-aunz' ),
-				'id'          => 'aramex_shipping_aunz_api_key',
-				'css'         => 'min-width:300px;',
-				'default'     => '',
-				'autoload'    => false,
-			),
-			array(
-				'title'       => __( 'API Secret', 'aramex-shipping-aunz' ),
-				'type'        => 'password',
-				'desc'        => __( 'Enter your Aramex API Secret.', 'aramex-shipping-aunz' ),
-				'id'          => 'aramex_shipping_aunz_api_secret',
-				'css'         => 'min-width:300px;',
-				'default'     => '',
-				'autoload'    => false,
-			),
-			array(
-				'title'       => __( 'Shipping Origin Country', 'aramex-shipping-aunz' ),
-				'type'        => 'select',
-				'desc'        => __( 'Select the shipping origin country.', 'aramex-shipping-aunz' ),
-				'id'          => 'aramex_shipping_aunz_origin_country',
-				'default'     => 'nz',
-				'options'     => array(
-					'nz' => __( 'New Zealand', 'aramex-shipping-aunz' ),
-					'au' => __( 'Australia', 'aramex-shipping-aunz' ),
-				),
-				'autoload'    => false,
-			),
-			array(
-				'type' => 'sectionend',
-				'id'   => 'aramex_shipping_aunz_settings',
-			),
-			array(
-				'title' => __( 'Test Connection', 'aramex-shipping-aunz' ),
-				'type'  => 'title',
-				'desc'  => __( 'Test your Aramex API connection.', 'aramex-shipping-aunz' ),
-				'id'    => 'aramex_shipping_aunz_test_connection_section',
-			),
-			array(
-				'type' => 'aramex_test_connection',
-				'id'   => 'aramex_shipping_aunz_test_connection_button',
-			),
-			array(
-				'type' => 'sectionend',
-				'id'   => 'aramex_shipping_aunz_test_connection_section_end',
-			),
-		);
-	}
-	return $settings;
+    if ( 'aramex_shipping_aunz' === $current_section ) {
+        $settings = array(
+            array(
+                'title' => __( 'Aramex Shipping Settings', 'aramex-shipping-aunz' ),
+                'type'  => 'title',
+                'id'    => 'aramex_shipping_aunz_settings',
+            ),
+            array(
+                'title'       => __( 'API Key', 'aramex-shipping-aunz' ),
+                'type'        => 'text',
+                'desc'        => __( 'Enter your Aramex API Key.', 'aramex-shipping-aunz' ),
+                'id'          => 'aramex_shipping_aunz_api_key',
+                'css'         => 'min-width:300px;',
+                'default'     => '',
+                'autoload'    => false,
+            ),
+            array(
+                'title'       => __( 'API Secret', 'aramex-shipping-aunz' ),
+                'type'        => 'password',
+                'desc'        => __( 'Enter your Aramex API Secret.', 'aramex-shipping-aunz' ),
+                'id'          => 'aramex_shipping_aunz_api_secret',
+                'css'         => 'min-width:300px;',
+                'default'     => '',
+                'autoload'    => false,
+            ),
+            array(
+                'title'       => __( 'Shipping Origin Country', 'aramex-shipping-aunz' ),
+                'type'        => 'select',
+                'desc'        => __( 'Select the shipping origin country.', 'aramex-shipping-aunz' ),
+                'id'          => 'aramex_shipping_aunz_origin_country',
+                'default'     => 'nz',
+                'options'     => array(
+                    'nz' => __( 'New Zealand', 'aramex-shipping-aunz' ),
+                    'au' => __( 'Australia', 'aramex-shipping-aunz' ),
+                ),
+                'autoload'    => false,
+            ),
+            array(
+                'type' => 'sectionend',
+                'id'   => 'aramex_shipping_aunz_settings',
+            ),
+            array(
+                'title' => __( 'Test Connection', 'aramex-shipping-aunz' ),
+                'type'  => 'title',
+                'desc'  => __( 'Test your Aramex API connection.', 'aramex-shipping-aunz' ),
+                'id'    => 'aramex_shipping_aunz_test_connection_section',
+            ),
+            array(
+                'type' => 'aramex_test_connection',
+                'id'   => 'aramex_shipping_aunz_test_connection_button',
+            ),
+            array(
+                'type' => 'sectionend',
+                'id'   => 'aramex_shipping_aunz_test_connection_section_end',
+            ),
+            array(
+                'type' => 'aramex_logo', // Add the custom field type for the logo
+                'id'   => 'aramex_shipping_aunz_logo',
+            ),
+        );
+    }
+    return $settings;
 }
 
 /**
