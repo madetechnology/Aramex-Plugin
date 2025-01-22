@@ -90,35 +90,3 @@ jQuery( document ).ready( function( $ ) {
       });
   });
 });
-
-
-
-jQuery(document).ready(function ($) {
-    $('#custom-action-print-label-button').on('click', function () {
-        const orderId = $(this).data('order-id');
-
-        $.ajax({
-            url: customAdminDataPrint.ajax_url,
-            method: 'POST',
-            data: {
-                action: 'print_label_action',
-                nonce: customAdminDataPrint.nonce,
-                order_id: orderId,
-            },
-            beforeSend: function () {
-                alert('Fetching label...');
-            },
-            success: function (response) {
-                if (response.success) {
-                    // Open the PDF file in a new tab
-                    window.open(response.data.label_url, '_blank');
-                } else {
-                    alert(response.data.message);
-                }
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-                alert('An error occurred. Please try again.');
-            },
-        });
-    });
-});
