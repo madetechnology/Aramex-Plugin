@@ -146,16 +146,47 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 				return;
 			}
 
+			// Get customer's packaging choice if enabled
+			$packaging_type = $this->get_option('packaging_type', 'product_dimensions');
+			$allow_customer_choice = $this->get_option('allow_customer_packaging') === 'yes';
+			
+			if ($allow_customer_choice && isset($_POST['post_data'])) {
+				parse_str($_POST['post_data'], $post_data);
+				if (!empty($post_data['aramex_packaging_type'])) {
+					$packaging_type = sanitize_text_field($post_data['aramex_packaging_type']);
+				}
+			}
+
 			// Initialize package calculator
 			require_once ARAMEX_PLUGIN_DIR . 'src/class-aramex-package-calculator.php';
 			$calculator = new Aramex_Package_Calculator(
 				$this->origin_country,
-				$this->get_option('packaging_type', 'product_dimensions'),
+				$packaging_type,
 				$this
 			);
 
 			// Calculate optimal packaging
-			$packages = $calculator->calculate_optimal_packaging($package['contents']);
+			if ($allow_customer_choice && 
+				$packaging_type === 'single_satchel' && 
+				isset($post_data['aramex_satchel_size'])) {
+				
+				$satchel_size = sanitize_text_field($post_data['aramex_satchel_size']);
+				// Check if the selected satchel size is valid
+				$available_satchels = $calculator->get_available_satchel_sizes();
+				if (isset($available_satchels[$satchel_size])) {
+					$packages = array(array(
+						'PackageType' => 'S',
+						'Quantity' => 1,
+						'SatchelSize' => $satchel_size,
+					));
+				} else {
+					error_log('Invalid satchel size selected.');
+					return;
+				}
+			} else {
+				$packages = $calculator->calculate_optimal_packaging($package['contents']);
+			}
+
 			if (empty($packages)) {
 				error_log('No valid packages could be calculated.');
 				return;

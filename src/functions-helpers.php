@@ -31,7 +31,7 @@ function aramex_shipping_aunz_add_checkout_fields( $fields ) {
 	}
 
 	$origin_country = get_option( 'aramex_shipping_aunz_origin_country', 'nz' );
-	$calculator = new Aramex_Package_Calculator( $origin_country );
+	$calculator = new Aramex_Package_Calculator( $origin_country, 'product_dimensions', $shipping_method );
 	$available_satchels = $calculator->get_available_satchel_sizes();
 
 	// Prepare satchel options
@@ -72,7 +72,7 @@ function aramex_shipping_aunz_add_checkout_fields( $fields ) {
 add_filter( 'woocommerce_checkout_fields', 'aramex_shipping_aunz_add_checkout_fields' );
 
 /**
- * Add JavaScript to handle packaging field visibility
+ * Add JavaScript to handle packaging field visibility and trigger shipping update
  */
 function aramex_shipping_aunz_checkout_script() {
 	if ( ! is_checkout() ) {
@@ -85,13 +85,35 @@ function aramex_shipping_aunz_checkout_script() {
 			var packagingType = $('#aramex_packaging_type').val();
 			if (packagingType === 'single_satchel') {
 				$('.aramex-satchel-size').show();
+				$('#aramex_satchel_size').prop('required', true);
 			} else {
 				$('.aramex-satchel-size').hide();
+				$('#aramex_satchel_size').prop('required', false);
 			}
 		}
 
-		$(document).on('change', '#aramex_packaging_type', toggleSatchelSize);
-		$(document).ready(toggleSatchelSize);
+		// Handle packaging type change
+		$(document).on('change', '#aramex_packaging_type, #aramex_satchel_size', function() {
+			toggleSatchelSize();
+			// Trigger shipping calculation update
+			$('body').trigger('update_checkout');
+		});
+
+		// Initial state
+		$(document).ready(function() {
+			toggleSatchelSize();
+		});
+
+		// Handle shipping method change
+		$(document).on('change', 'input[name^="shipping_method"]', function() {
+			var selectedMethod = $('input[name^="shipping_method"]:checked').val();
+			if (selectedMethod && selectedMethod.indexOf('my_shipping_method') !== -1) {
+				$('#aramex_packaging_type, #aramex_satchel_size').closest('.form-row').show();
+				toggleSatchelSize();
+			} else {
+				$('#aramex_packaging_type, #aramex_satchel_size').closest('.form-row').hide();
+			}
+		});
 	});
 	</script>
 	<?php
