@@ -44,7 +44,7 @@ function aramex_create_consignment_callback() {
             'StreetAddress'   => $order->get_shipping_address_1(),
             'Locality'        => $order->get_shipping_city(),
             'StateOrProvince' => $order->get_shipping_state(),
-            'PostalCode'      => "0610",
+            'PostalCode'      => $order->get_shipping_postcode(),
             'Country'         => $order->get_shipping_country(),
         ),
     );
@@ -72,8 +72,12 @@ function aramex_create_consignment_callback() {
         wp_send_json_error( array( 'message' => 'Failed to retrieve access token.' ) );
     }
 
+    // Get the origin country
+    $origin_country = get_option( 'aramex_shipping_aunz_origin_country', 'nz' );
+    $api_base_url = aramex_shipping_aunz_get_api_base_url( $origin_country );
+
     // Make the API request
-    $response = wp_remote_post( 'https://api.myfastway.co.nz/api/consignments', array(
+    $response = wp_remote_post( $api_base_url . '/api/consignments', array(
         'method'    => 'POST',
         'body'      => json_encode( $body ),
         'headers'   => array(
@@ -92,11 +96,6 @@ function aramex_create_consignment_callback() {
 
     if ( isset( $response_data['data'] ) ) {
         $con_id = $response_data['data']['conId'];
-
-        // Save the conId as custom field in the order
-        //update_post_meta( $order_id, '_aramex_conId', $con_id );
-        //$success = update_post_meta($order_id, 'aramex_conId', $con_id);
-        //$order->update_meta_data('aramex_conId', $con_id);
 
         // Save the conId as a custom field using the $order object
         $order->update_meta_data( 'aramex_conId', $con_id );
@@ -151,9 +150,13 @@ function aramex_delete_consignment_callback() {
         wp_send_json_error(array('message' => 'Failed to retrieve access token.'));
     }
 
+    // Get the origin country and API base URL
+    $origin_country = get_option( 'aramex_shipping_aunz_origin_country', 'nz' );
+    $api_base_url = aramex_shipping_aunz_get_api_base_url( $origin_country );
+
     // Prepare the API endpoint and delete reason
     $delete_reason_id = 3; // Reason ID for "Created in Error"
-    $api_endpoint = "https://api.myfastway.co.nz/api/consignments/{$con_id}/reason/{$delete_reason_id}";
+    $api_endpoint = $api_base_url . "/api/consignments/{$con_id}/reason/{$delete_reason_id}";
 
     // Make the DELETE API request
     $response = wp_remote_request($api_endpoint, array(

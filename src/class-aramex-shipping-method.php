@@ -83,7 +83,8 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 			error_log( "Fetching locationDetailsKey with access token: {$access_token}" );
 
 			$destination = $package['destination'];
-			$url = 'https://api.myfastway.co.nz/api/location';
+			$api_base_url = aramex_shipping_aunz_get_api_base_url( $this->origin_country );
+			$url = $api_base_url . '/api/location';
 
 			$from_street_address = get_option( 'woocommerce_store_address', '' );
 			$from_locality       = get_option( 'woocommerce_store_city', '' );
@@ -137,7 +138,8 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 		private function get_quote_rates( $access_token, $location_details_key ) {
 			error_log( "Fetching quote rates with locationDetailsKey: {$location_details_key}" );
 
-			$url = 'https://api.myfastway.co.nz/api/consignments/quote?api-version=2';
+			$api_base_url = aramex_shipping_aunz_get_api_base_url( $this->origin_country );
+			$url = $api_base_url . '/api/consignments/quote?api-version=2';
 
 			$cart = WC()->cart->get_cart();
 			$total_weight = 0;
