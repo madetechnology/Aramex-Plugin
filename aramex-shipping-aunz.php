@@ -31,6 +31,7 @@ require_once ARAMEX_PLUGIN_DIR . 'src/functions-settings.php';
 add_action( 'wp_ajax_aramex_shipping_aunz_test_connection_ajax', 'aramex_shipping_aunz_test_connection_ajax_callback' );
 add_action( 'wp_ajax_create_consignment_action', 'aramex_create_consignment_callback' );
 add_action( 'wp_ajax_delete_consignment_action', 'aramex_delete_consignment_callback' );
+add_action( 'wp_ajax_print_label_action', 'aramex_print_label_callback' );
 
 /**
  * Initialize the plugin and add WooCommerce settings tab and shipping method.
@@ -73,14 +74,16 @@ function add_custom_button_to_order_page( $order ) {
     // Add the custom button
     echo '<button type="button" class="button custom-action-button" id="custom-action-button" data-order-id="' . esc_attr( $order->get_id() ) . '">' . __( 'Create Consignment', 'aramex-shipping-aunz' ) . '</button>';
     
-    // Only show delete button if aramex_conId exists
+    // Only show delete and print buttons if aramex_conId exists
     $con_id = $order->get_meta('aramex_conId');
     if ($con_id) {
-        echo '<button type="button" class="button custom-action-delete-button" id="custom-action-delete-button" data-order-id="' . esc_attr( $order->get_id() ) . '">' . __( 'Delete Consignment', 'aramex-shipping-aunz' ) . '</button>';
+        echo '<button type="button" class="button custom-action-delete-button" id="custom-action-delete-button" data-order-id="' . esc_attr( $order->get_id() ) . '" data-consignment-id="' . esc_attr( $con_id ) . '">' . __( 'Delete Consignment', 'aramex-shipping-aunz' ) . '</button>';
+        echo '<button type="button" class="button custom-action-print-label" id="custom-action-print-label" data-order-id="' . esc_attr( $order->get_id() ) . '" data-consignment-id="' . esc_attr( $con_id ) . '">' . __( 'Print Label', 'aramex-shipping-aunz' ) . '</button>';
     }
 
-    // Include a nonce for security
+    // Include nonces for security
     wp_nonce_field( 'create_consignment_action', 'create_consignment_nonce' );
     wp_nonce_field( 'delete_consignment_action', 'delete_consignment_nonce' );
+    wp_nonce_field( 'print_label_action', 'print_label_nonce' );
 }
 
