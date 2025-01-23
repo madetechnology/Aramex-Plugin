@@ -63,24 +63,24 @@ function aramex_shipping_aunz_add_my_shipping_method( $methods ) {
 }
 
 
+
 function add_custom_button_to_order_page( $order ) {
     // Ensure the $order object is valid and is an instance of WC_Order
     if ( ! $order || ! is_a( $order, 'WC_Order' ) ) {
         return;
     }
 
-    // Add the "Create Consignment" button
+    // Add the custom button
     echo '<button type="button" class="button custom-action-button" id="custom-action-button" data-order-id="' . esc_attr( $order->get_id() ) . '">' . __( 'Create Consignment', 'aramex-shipping-aunz' ) . '</button>';
+    
+    // Only show delete button if aramex_conId exists
+    $con_id = $order->get_meta('aramex_conId');
+    if ($con_id) {
+        echo '<button type="button" class="button custom-action-delete-button" id="custom-action-delete-button" data-order-id="' . esc_attr( $order->get_id() ) . '">' . __( 'Delete Consignment', 'aramex-shipping-aunz' ) . '</button>';
+    }
 
-    // Add the "Delete Consignment" button
-    echo '<button type="button" class="button custom-action-delete-button" id="custom-action-delete-button" data-order-id="' . esc_attr( $order->get_id() ) . '">' . __( 'Delete Consignment', 'aramex-shipping-aunz' ) . '</button>';
-
-    // Add the "Print Label" button
-    echo '<button type="button" class="button custom-action-print-label-button" id="custom-action-print-label-button" data-order-id="' . esc_attr( $order->get_id() ) . '">' . __( 'Print Label', 'aramex-shipping-aunz' ) . '</button>';
-
-    // Include nonce fields for security
+    // Include a nonce for security
     wp_nonce_field( 'create_consignment_action', 'create_consignment_nonce' );
     wp_nonce_field( 'delete_consignment_action', 'delete_consignment_nonce' );
-    wp_nonce_field( 'print_label_action', 'print_label_nonce' );
 }
 
