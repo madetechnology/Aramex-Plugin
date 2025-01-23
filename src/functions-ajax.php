@@ -49,16 +49,49 @@ function aramex_create_consignment_callback() {
         ),
     );
 
+    // Get packaging preferences
+    $packaging_type = get_post_meta($order_id, '_aramex_packaging_type', true) ?: 'auto';
+    $satchel_size = get_post_meta($order_id, '_aramex_satchel_size', true);
+
+    // Get order items in a format suitable for the package calculator
+    $order_items = array();
+    foreach ($order->get_items() as $item) {
+        $product = $item->get_product();
+        if ($product) {
+            $order_items[] = array(
+                'data' => $product,
+                'quantity' => $item->get_quantity(),
+            );
+        }
+    }
+
+    // Initialize package calculator
+    require_once ARAMEX_PLUGIN_DIR . 'src/class-aramex-package-calculator.php';
+    $origin_country = get_option('aramex_shipping_aunz_origin_country', 'nz');
+    $calculator = new Aramex_Package_Calculator($origin_country, $packaging_type);
+
+    // Calculate packages based on packaging type
+    if ($packaging_type === 'single_satchel' && $satchel_size) {
+        // Force single satchel if selected
+        $packages = array(array(
+            'PackageType' => 'S',
+            'Quantity' => 1,
+            'SatchelSize' => $satchel_size,
+        ));
+    } else {
+        // Use calculator for other cases
+        $packages = $calculator->calculate_optimal_packaging($order_items);
+    }
+
+    if (empty($packages)) {
+        wp_send_json_error(array('message' => 'Could not determine appropriate packaging for the order items.'));
+        return;
+    }
+
     // Prepare the request body
     $body = array(
-        'To'    => $to_address,
-        'Items' => array(
-            array(
-                'Quantity'    => 1,
-                'PackageType' => 'S',
-                'SatchelSize' => 'A4',
-            ),
-        ),
+        'To' => $to_address,
+        'Items' => $packages,
     );
 
     // Include the shipping method class
@@ -68,51 +101,55 @@ function aramex_create_consignment_callback() {
     $shipping_method = new My_Shipping_Method();
     $access_token = $shipping_method->get_access_token();
 
-    if ( ! $access_token ) {
-        wp_send_json_error( array( 'message' => 'Failed to retrieve access token.' ) );
+    if (!$access_token) {
+        wp_send_json_error(array('message' => 'Failed to retrieve access token.'));
     }
 
-    // Get the origin country
-    $origin_country = get_option( 'aramex_shipping_aunz_origin_country', 'nz' );
-    $api_base_url = aramex_shipping_aunz_get_api_base_url( $origin_country );
+    // Get the API base URL
+    $api_base_url = aramex_shipping_aunz_get_api_base_url($origin_country);
 
     // Make the API request
-    $response = wp_remote_post( $api_base_url . '/api/consignments', array(
-        'method'    => 'POST',
-        'body'      => json_encode( $body ),
-        'headers'   => array(
-            'Content-Type'  => 'application/json',
+    $response = wp_remote_post($api_base_url . '/api/consignments', array(
+        'method' => 'POST',
+        'body' => json_encode($body),
+        'headers' => array(
+            'Content-Type' => 'application/json',
             'Authorization' => 'Bearer ' . $access_token,
         ),
-    ) );
+    ));
 
     // Handle the API response
-    if ( is_wp_error( $response ) ) {
-        wp_send_json_error( array( 'message' => $response->get_error_message() ) );
+    if (is_wp_error($response)) {
+        wp_send_json_error(array('message' => $response->get_error_message()));
     }
 
-    $response_body = wp_remote_retrieve_body( $response );
-    $response_data = json_decode( $response_body, true );
+    $response_body = wp_remote_retrieve_body($response);
+    $response_data = json_decode($response_body, true);
 
-    if ( isset( $response_data['data'] ) ) {
+    if (isset($response_data['data'])) {
         $con_id = $response_data['data']['conId'];
 
-        // Save the conId as a custom field using the $order object
-        $order->update_meta_data( 'aramex_conId', $con_id );
-        $order->save(); // Save the order to persist the metadata
+        // Save the conId and packaging details
+        $order->update_meta_data('aramex_conId', $con_id);
+        $order->update_meta_data('aramex_packages', $packages);
+        $order->save();
 
         // Add the ConID to the order notes
-        $order->add_order_note( sprintf( __( 'Consignment created successfully. ConID: %s', 'aramex-shipping-aunz' ), $con_id ) );
+        $order->add_order_note(sprintf(
+            __('Consignment created successfully. ConID: %s. Packages: %d', 'aramex-shipping-aunz'),
+            $con_id,
+            count($packages)
+        ));
 
-        wp_send_json_success( array(
+        wp_send_json_success(array(
             'message' => 'Consignment created successfully!',
-            'data'    => $response_data['data'],
-        ) );
+            'data' => $response_data['data'],
+        ));
     } else {
-        wp_send_json_error( array(
+        wp_send_json_error(array(
             'message' => 'Failed to create consignment.',
-            'data'    => $response_data,
-        ) );
+            'data' => $response_data,
+        ));
     }
 }
 add_action( 'wp_ajax_aramex_create_consignment', 'aramex_create_consignment_callback' );

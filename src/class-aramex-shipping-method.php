@@ -32,6 +32,101 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 			add_action( 'woocommerce_update_options_shipping_' . $this->id, array( $this, 'process_admin_options' ) );
 		}
 
+		public function init_form_fields() {
+			$this->instance_form_fields = array(
+				'title' => array(
+					'title'       => __( 'Method Title', 'aramex-shipping-aunz' ),
+					'type'        => 'text',
+					'description' => __( 'This controls the title which the user sees during checkout.', 'aramex-shipping-aunz' ),
+					'default'     => __( 'Aramex Shipping', 'aramex-shipping-aunz' ),
+					'desc_tip'    => true,
+				),
+				'packaging_type' => array(
+					'title'       => __( 'Packaging Type', 'aramex-shipping-aunz' ),
+					'type'        => 'select',
+					'description' => __( 'Choose how to package items.', 'aramex-shipping-aunz' ),
+					'default'     => 'product_dimensions',
+					'options'     => array(
+						'single_box'         => __( 'Single Box', 'aramex-shipping-aunz' ),
+						'fixed_size'         => __( 'Fixed Size Boxes', 'aramex-shipping-aunz' ),
+						'product_dimensions' => __( 'Product Dimensions', 'aramex-shipping-aunz' ),
+					),
+				),
+				'allow_customer_packaging' => array(
+					'title'       => __( 'Customer Packaging Choice', 'aramex-shipping-aunz' ),
+					'type'        => 'checkbox',
+					'description' => __( 'Allow customers to choose packaging type at checkout.', 'aramex-shipping-aunz' ),
+					'default'     => 'no',
+				),
+				'custom_boxes' => array(
+					'title'       => __( 'Custom Box Sizes', 'aramex-shipping-aunz' ),
+					'type'        => 'textarea',
+					'description' => __( 'Define custom box sizes in JSON format. Example: {"SMALL":{"length":20,"width":20,"height":20,"weight":5}}', 'aramex-shipping-aunz' ),
+					'default'     => '',
+					'css'        => 'height: 150px;',
+				),
+				'package_types_title' => array(
+					'title'       => __( 'Supported Aramex Shipping Package Types', 'aramex-shipping-aunz' ),
+					'type'        => 'title',
+					'description' => __( 'Enable or disable specific satchel and box sizes. Disabled sizes will not be offered at checkout.', 'aramex-shipping-aunz' ),
+				),
+				'enable_satchel_300gm' => array(
+					'title'       => __( 'Satchel 300GM (22.0 x 16.5 cm)', 'aramex-shipping-aunz' ),
+					'type'        => 'checkbox',
+					'description' => __( 'Maximum weight: 0.3 kg. Available in: Australia', 'aramex-shipping-aunz' ),
+					'default'     => 'yes',
+				),
+				'enable_satchel_dl' => array(
+					'title'       => __( 'Satchel DL (12.6 x 24.0 cm)', 'aramex-shipping-aunz' ),
+					'type'        => 'checkbox',
+					'description' => __( 'Maximum weight: 5 kg. Available in: New Zealand', 'aramex-shipping-aunz' ),
+					'default'     => 'yes',
+				),
+				'enable_satchel_a5' => array(
+					'title'       => __( 'Satchel A5 (19.0 x 26.0 cm)', 'aramex-shipping-aunz' ),
+					'type'        => 'checkbox',
+					'description' => __( 'Maximum weight: 5 kg. Available in: Australia, New Zealand', 'aramex-shipping-aunz' ),
+					'default'     => 'yes',
+				),
+				'enable_satchel_a4' => array(
+					'title'       => __( 'Satchel A4 (25.0 x 32.5 cm)', 'aramex-shipping-aunz' ),
+					'type'        => 'checkbox',
+					'description' => __( 'Maximum weight: 5 kg. Available in: Australia, New Zealand', 'aramex-shipping-aunz' ),
+					'default'     => 'yes',
+				),
+				'enable_satchel_a3' => array(
+					'title'       => __( 'Satchel A3 (32.5 x 44.0 cm)', 'aramex-shipping-aunz' ),
+					'type'        => 'checkbox',
+					'description' => __( 'Maximum weight: 5 kg. Available in: Australia, New Zealand', 'aramex-shipping-aunz' ),
+					'default'     => 'yes',
+				),
+				'enable_satchel_a2' => array(
+					'title'       => __( 'Satchel A2 (45.0 x 61.0 cm)', 'aramex-shipping-aunz' ),
+					'type'        => 'checkbox',
+					'description' => __( 'Maximum weight: 5 kg. Available in: Australia, New Zealand', 'aramex-shipping-aunz' ),
+					'default'     => 'yes',
+				),
+				'enable_box_small' => array(
+					'title'       => __( 'Small Box (20 x 20 x 20 cm)', 'aramex-shipping-aunz' ),
+					'type'        => 'checkbox',
+					'description' => __( 'Maximum weight: 5 kg', 'aramex-shipping-aunz' ),
+					'default'     => 'yes',
+				),
+				'enable_box_medium' => array(
+					'title'       => __( 'Medium Box (30 x 30 x 30 cm)', 'aramex-shipping-aunz' ),
+					'type'        => 'checkbox',
+					'description' => __( 'Maximum weight: 10 kg', 'aramex-shipping-aunz' ),
+					'default'     => 'yes',
+				),
+				'enable_box_large' => array(
+					'title'       => __( 'Large Box (40 x 40 x 40 cm)', 'aramex-shipping-aunz' ),
+					'type'        => 'checkbox',
+					'description' => __( 'Maximum weight: 20 kg', 'aramex-shipping-aunz' ),
+					'default'     => 'yes',
+				),
+			);
+		}
+
 		public function process_admin_options() {
 			parent::process_admin_options();
 		}
@@ -51,26 +146,42 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 				return;
 			}
 
-			$rates = $this->get_quote_rates( $access_token, $location_details_key );
-			if ( empty( $rates ) ) {
-				error_log( 'No rates found from the API.' );
+			// Initialize package calculator
+			require_once ARAMEX_PLUGIN_DIR . 'src/class-aramex-package-calculator.php';
+			$calculator = new Aramex_Package_Calculator(
+				$this->origin_country,
+				$this->get_option('packaging_type', 'product_dimensions'),
+				$this
+			);
+
+			// Calculate optimal packaging
+			$packages = $calculator->calculate_optimal_packaging($package['contents']);
+			if (empty($packages)) {
+				error_log('No valid packages could be calculated.');
 				return;
 			}
 
-			foreach ( $rates as $rate_data ) {
+			// Get shipping rates for each package
+			$rates = $this->get_quote_rates($access_token, $location_details_key, $packages);
+			if (empty($rates)) {
+				error_log('No rates found from the API.');
+				return;
+			}
+
+			foreach ($rates as $rate_data) {
 				$description = $rate_data['description'] ?? 'Unknown Service';
 				$total_price = $rate_data['total_price'] ?? 0;
 
-				if ( ! empty( $total_price ) ) {
+				if (!empty($total_price)) {
 					$rate = array(
-						'id'    => $this->id . '_' . sanitize_title( $description ),
-						'label' => $description . ' - $' . number_format( $total_price, 2 ),
+						'id'    => $this->id . '_' . sanitize_title($description),
+						'label' => $description . ' - $' . number_format($total_price, 2),
 						'cost'  => $total_price,
 					);
-					error_log( 'Adding shipping rate: ' . print_r( $rate, true ) );
-					$this->add_rate( $rate );
+					error_log('Adding shipping rate: ' . print_r($rate, true));
+					$this->add_rate($rate);
 				} else {
-					error_log( "Skipping rate for {$description} due to invalid total_price." );
+					error_log("Skipping rate for {$description} due to invalid total_price.");
 				}
 			}
 		}
@@ -135,102 +246,15 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 			return $data['data']['locationDetails']['locationDetailsKey'] ?? null;
 		}
 
-		private function get_quote_rates( $access_token, $location_details_key ) {
-			error_log( "Fetching quote rates with locationDetailsKey: {$location_details_key}" );
+		private function get_quote_rates($access_token, $location_details_key, $packages) {
+			error_log("Fetching quote rates with locationDetailsKey: {$location_details_key}");
 
-			$api_base_url = aramex_shipping_aunz_get_api_base_url( $this->origin_country );
+			$api_base_url = aramex_shipping_aunz_get_api_base_url($this->origin_country);
 			$url = $api_base_url . '/api/consignments/quote?api-version=2';
-
-			$cart = WC()->cart->get_cart();
-			$total_weight = 0;
-			$lengths = array();
-			$heights = array();
-			$max_length = 0;
-			$max_width = 0;
-			$max_height = 0;
-
-			foreach ( $cart as $cart_item ) {
-				$product = $cart_item['data'];
-
-				$total_weight += (float) $product->get_weight() * $cart_item['quantity'];
-				$lengths[] = (float) $product->get_length();
-				$heights[] = (float) $product->get_height();
-				$max_width = max( $max_width, (float) $product->get_width() );
-			}
-
-			// Check stackability (90% rule)
-			$stackable = true;
-			if ( ! empty( $lengths ) ) {
-				$first_length = $lengths[0];
-				foreach ( $lengths as $length ) {
-					if ( abs( $length - $first_length ) > 0.1 * $first_length ) {
-						$stackable = false;
-						break;
-					}
-				}
-			}
-
-			if ( ! empty( $heights ) ) {
-				$first_height = $heights[0];
-				foreach ( $heights as $height ) {
-					if ( abs( $height - $first_height ) > 0.1 * $first_height ) {
-						$stackable = false;
-						break;
-					}
-				}
-			}
-
-			if ( $stackable ) {
-				$max_length = max( $lengths );
-				$max_height = max( $heights );
-				error_log( 'Products are stackable. Using max dimensions.' );
-			} else {
-				$max_length = array_sum( $lengths );
-				$max_height = array_sum( $heights );
-				error_log( 'Products are not stackable. Using total dimensions.' );
-			}
-
-			// Default to 1 if dimensions or weight are not set
-			$total_weight = max( $total_weight, 1 );
-			$max_length   = max( $max_length, 1 );
-			$max_width    = max( $max_width, 1 );
-
-			// Determine smallest satchel size that fits
-			$satchel_sizes = array(
-				'DL' => array( 'length' => 12.6, 'width' => 24.0, 'weight' => 5 ),
-				'A5' => array( 'length' => 19.0, 'width' => 26.0, 'weight' => 5 ),
-				'A4' => array( 'length' => 25.0, 'width' => 32.5, 'weight' => 5 ),
-				'A3' => array( 'length' => 32.5, 'width' => 44.0, 'weight' => 5 ),
-				'A2' => array( 'length' => 45.0, 'width' => 61.0, 'weight' => 5 ),
-			);
-
-			$selected_satchel = null;
-			foreach ( $satchel_sizes as $size => $dimensions ) {
-				if ( $max_length <= $dimensions['length'] &&
-					 $max_width <= $dimensions['width'] &&
-					 $total_weight <= $dimensions['weight'] ) {
-					$selected_satchel = $size;
-					break;
-				}
-			}
-
-			if ( ! $selected_satchel ) {
-				error_log( 'Cart exceeds all satchel sizes.' );
-				return array();
-			}
-
-			error_log( "Selected satchel size: {$selected_satchel}" );
 
 			$body = array(
 				'LocationDetailsKey' => $location_details_key,
-				'Items' => array(
-					array(
-						'Quantity'    => 1,
-						'Reference'   => '',
-						'PackageType' => 'S',
-						'SatchelSize' => $selected_satchel,
-					),
-				),
+				'Items' => $packages,
 				'Services' => array(),
 			);
 
@@ -241,31 +265,31 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 						'Authorization' => 'Bearer ' . $access_token,
 						'Content-Type'  => 'application/json',
 					),
-					'body'    => wp_json_encode( $body ),
+					'body'    => wp_json_encode($body),
 					'timeout' => 45,
 				)
 			);
 
-			if ( is_wp_error( $response ) ) {
-				error_log( 'Error fetching quote rates: ' . $response->get_error_message() );
+			if (is_wp_error($response)) {
+				error_log('Error fetching quote rates: ' . $response->get_error_message());
 				return array();
 			}
 
-			$response_body = wp_remote_retrieve_body( $response );
-			error_log( 'Quote API Response: ' . $response_body );
+			$response_body = wp_remote_retrieve_body($response);
+			error_log('Quote API Response: ' . $response_body);
 
-			$data = json_decode( $response_body, true );
+			$data = json_decode($response_body, true);
 
-			if ( ! isset( $data['data'] ) || ! is_array( $data['data'] ) ) {
-				error_log( 'Invalid or missing data in Quote API response.' );
+			if (!isset($data['data']) || !is_array($data['data'])) {
+				error_log('Invalid or missing data in Quote API response.');
 				return array();
 			}
 
 			$parsed_services = array();
-			foreach ( $data['data'] as $service ) {
-				if ( isset( $service['items'] ) && is_array( $service['items'] ) ) {
-					foreach ( $service['items'] as $item ) {
-						if ( isset( $item['productType'] ) && $item['productType'] === 'Labels' ) {
+			foreach ($data['data'] as $service) {
+				if (isset($service['items']) && is_array($service['items'])) {
+					foreach ($service['items'] as $item) {
+						if (isset($item['productType']) && $item['productType'] === 'Labels') {
 							$parsed_services[] = array(
 								'description' => $item['description'] ?? 'Unknown Service',
 								'total_price' => $item['total'] ?? 0,
@@ -276,7 +300,7 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 				}
 			}
 
-			error_log( 'Parsed Services: ' . print_r( $parsed_services, true ) );
+			error_log('Parsed Services: ' . print_r($parsed_services, true));
 
 			return $parsed_services;
 		}
