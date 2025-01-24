@@ -49,6 +49,128 @@ add_action( 'plugins_loaded', 'aramex_shipping_aunz_init' );
 add_action( 'woocommerce_order_item_add_action_buttons', 'add_custom_button_to_order_page', 10, 1 );
 //add_action( 'woocommerce_order_item_add_action_buttons', 'add_custom_delete_button_to_order_page', 10, 1 );
 
+/**
+ * Register the aramex_tracking shortcode
+ */
+function aramex_tracking_shortcode() {
+    ob_start();
+    ?>
+    <div class="aramex-tracking-form">
+        <form id="aramex-tracking-form">
+            <input type="text" id="aramex-tracking-number" placeholder="Enter tracking number" required>
+            <button type="submit">Track Shipment</button>
+        </form>
+        <div id="aramex-tracking-results"></div>
+    </div>
+    <script>
+    jQuery(document).ready(function($) {
+        $('#aramex-tracking-form').on('submit', function(e) {
+            e.preventDefault();
+            var trackingNumber = $('#aramex-tracking-number').val();
+            var resultsDiv = $('#aramex-tracking-results');
+            
+            resultsDiv.html('<p>Loading tracking information...</p>');
+            
+            $.ajax({
+                url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                type: 'POST',
+                data: {
+                    action: 'track_shipment_action',
+                    label_number: trackingNumber,
+                    nonce: '<?php echo wp_create_nonce('track_shipment_nonce'); ?>'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        var events = response.data.tracking_events;
+                        var html = '<table class="aramex-tracking-table">';
+                        html += '<thead><tr>';
+                        html += '<th>Date/Time</th>';
+                        html += '<th>Status</th>';
+                        html += '<th>Description</th>';
+                        html += '<th>Location</th>';
+                        html += '</tr></thead><tbody>';
+
+                        if (events && events.length > 0) {
+                            events.forEach(function(event) {
+                                html += '<tr>';
+                                html += '<td>' + event.date + '</td>';
+                                html += '<td>' + event.status + '</td>';
+                                html += '<td>' + (event.scan_description || event.description) + '</td>';
+                                html += '<td>' + event.location + '</td>';
+                                html += '</tr>';
+                            });
+                        } else {
+                            html += '<tr><td colspan="4">No tracking events found.</td></tr>';
+                        }
+
+                        html += '</tbody></table>';
+                        resultsDiv.html(html);
+                    } else {
+                        resultsDiv.html('<p class="error">' + (response.data.message || 'Error retrieving tracking information') + '</p>');
+                    }
+                },
+                error: function() {
+                    resultsDiv.html('<p class="error">Error connecting to the server</p>');
+                }
+            });
+        });
+    });
+    </script>
+    <style>
+    .aramex-tracking-form {
+        max-width: 800px;
+        margin: 20px auto;
+    }
+    .aramex-tracking-form form {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .aramex-tracking-form input[type="text"] {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .aramex-tracking-form button {
+        padding: 8px 20px;
+        background-color: #0073aa;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .aramex-tracking-form button:hover {
+        background-color: #005177;
+    }
+    .aramex-tracking-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    .aramex-tracking-table th,
+    .aramex-tracking-table td {
+        padding: 10px;
+        border: 1px solid #ddd;
+        text-align: left;
+    }
+    .aramex-tracking-table th {
+        background-color: #f5f5f5;
+    }
+    .aramex-tracking-table tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    .error {
+        color: #dc3232;
+        padding: 10px;
+        background-color: #ffeaea;
+        border-radius: 4px;
+    }
+    </style>
+    <?php
+    return ob_get_clean();
+}
+add_shortcode('aramex_tracking', 'aramex_tracking_shortcode');
 
 /**
  * Load the shipping method class after WooCommerce shipping has initialized.
@@ -62,8 +184,6 @@ function aramex_shipping_aunz_add_my_shipping_method( $methods ) {
 	$methods['my_shipping_method'] = 'My_Shipping_Method';
 	return $methods;
 }
-
-
 
 function add_custom_button_to_order_page( $order ) {
     // Ensure the $order object is valid and is an instance of WC_Order
