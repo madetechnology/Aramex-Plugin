@@ -102,4 +102,77 @@ jQuery(document).ready(function($) {
             }
         });
     });
+
+    // Track shipment button click handler
+    $('#custom-action-track-shipment').on('click', function(e) {
+        e.preventDefault();
+        var button = $(this);
+        var order_id = button.data('order-id');
+        var label_number = button.data('label-number');
+        var modal = $('#aramex-tracking-modal');
+        var content = $('#aramex-tracking-content');
+
+        button.prop('disabled', true);
+        content.html('<p>Loading tracking information...</p>');
+        modal.show();
+
+        $.ajax({
+            url: aramexOrderActions.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'track_shipment_action',
+                order_id: order_id,
+                label_number: label_number,
+                nonce: aramexOrderActions.nonces.track
+            },
+            success: function(response) {
+                if (response.success) {
+                    var events = response.data.tracking_events;
+                    var html = '<table class="widefat" style="margin-top: 10px;">';
+                    html += '<thead><tr>';
+                    html += '<th>Date/Time</th>';
+                    html += '<th>Status</th>';
+                    html += '<th>Description</th>';
+                    html += '<th>Location</th>';
+                    html += '</tr></thead><tbody>';
+
+                    if (events.length > 0) {
+                        events.forEach(function(event) {
+                            html += '<tr>';
+                            html += '<td>' + event.date + '</td>';
+                            html += '<td>' + event.status + '</td>';
+                            html += '<td>' + (event.scan_description || event.description) + '</td>';
+                            html += '<td>' + event.location + '</td>';
+                            html += '</tr>';
+                        });
+                    } else {
+                        html += '<tr><td colspan="4">No tracking events found.</td></tr>';
+                    }
+
+                    html += '</tbody></table>';
+                    content.html(html);
+                } else {
+                    content.html('<p class="error">' + (response.data.message || 'Error retrieving tracking information') + '</p>');
+                }
+                button.prop('disabled', false);
+            },
+            error: function() {
+                content.html('<p class="error">Error communicating with server</p>');
+                button.prop('disabled', false);
+            }
+        });
+    });
+
+    // Modal close button handler
+    $('.close').on('click', function() {
+        $('#aramex-tracking-modal').hide();
+    });
+
+    // Close modal when clicking outside
+    $(window).on('click', function(e) {
+        var modal = $('#aramex-tracking-modal');
+        if (e.target == modal[0]) {
+            modal.hide();
+        }
+    });
 }); 

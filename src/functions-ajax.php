@@ -417,6 +417,24 @@ function aramex_print_label_callback() {
         }
     }
 
+    // Before getting PDF content, get the label number
+    $label_info_url = $api_base_url . "/api/consignments/{$con_id}";
+    $label_info_response = wp_remote_get($label_info_url, array(
+        'headers' => array(
+            'Authorization' => 'Bearer ' . $access_token,
+            'Accept' => 'application/json',
+        ),
+        'timeout' => 30,
+    ));
+
+    if (!is_wp_error($label_info_response) && wp_remote_retrieve_response_code($label_info_response) === 200) {
+        $label_info = json_decode(wp_remote_retrieve_body($label_info_response), true);
+        if (isset($label_info['data']['labelNo'])) {
+            $order->update_meta_data('aramex_label_number', $label_info['data']['labelNo']);
+            $order->save();
+        }
+    }
+
     // Get the PDF content
     $pdf_content = wp_remote_retrieve_body($response);
 
@@ -446,3 +464,105 @@ function aramex_print_label_callback() {
     ));
 }
 add_action('wp_ajax_print_label_action', 'aramex_print_label_callback');
+
+function aramex_track_shipment_callback() {
+    // Verify the nonce
+    check_ajax_referer('track_shipment_nonce', 'nonce');
+
+    // Get the order ID and label number
+    $order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
+    $label_number = isset($_POST['label_number']) ? sanitize_text_field($_POST['label_number']) : '';
+
+    if (!$order_id || !$label_number) {
+        wp_send_json_error(array('message' => 'Invalid order ID or label number.'));
+        return;
+    }
+
+    // Get the order object
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        wp_send_json_error(array('message' => 'Order not found.'));
+        return;
+    }
+
+    // Include the shipping method class
+    require_once ARAMEX_PLUGIN_DIR . 'src/class-aramex-shipping-method.php';
+
+    // Get the access token
+    $shipping_method = new My_Shipping_Method();
+    $access_token = $shipping_method->get_access_token();
+
+    if (!$access_token) {
+        wp_send_json_error(array('message' => 'Failed to retrieve access token.'));
+        return;
+    }
+
+    // Get the API base URL
+    $origin_country = get_option('aramex_shipping_aunz_origin_country', 'nz');
+    $api_base_url = aramex_shipping_aunz_get_api_base_url($origin_country);
+
+    // Prepare the tracking URL using the label number
+    $tracking_url = $api_base_url . "/api/track/label/{$label_number}";
+
+    // Log request for debugging
+    error_log('Track Shipment Request URL: ' . $tracking_url);
+
+    // Make the API request
+    $response = wp_remote_get($tracking_url, array(
+        'headers' => array(
+            'Authorization' => 'Bearer ' . $access_token,
+            'Accept' => 'application/json',
+        ),
+        'timeout' => 30,
+    ));
+
+    // Handle the API response
+    if (is_wp_error($response)) {
+        error_log('Track Shipment Error: ' . $response->get_error_message());
+        wp_send_json_error(array('message' => $response->get_error_message()));
+        return;
+    }
+
+    $response_code = wp_remote_retrieve_response_code($response);
+    $response_body = wp_remote_retrieve_body($response);
+    $response_data = json_decode($response_body, true);
+
+    // Log response for debugging
+    error_log('Track Shipment Response Code: ' . $response_code);
+    error_log('Track Shipment Response Body: ' . $response_body);
+
+    if ($response_code !== 200) {
+        $error_message = isset($response_data['message']) ? $response_data['message'] : 'Unexpected error occurred.';
+        wp_send_json_error(array(
+            'message' => 'Failed to retrieve tracking information: ' . $error_message,
+            'response_code' => $response_code,
+        ));
+        return;
+    }
+
+    // Format tracking events for display
+    $tracking_events = array();
+    if (isset($response_data['data']) && is_array($response_data['data'])) {
+        foreach ($response_data['data'] as $event) {
+            $tracking_events[] = array(
+                'date' => isset($event['scannedDateTime']) ? date('Y-m-d H:i:s', strtotime($event['scannedDateTime'])) : '',
+                'status' => isset($event['status']) ? $event['status'] : '',
+                'description' => isset($event['description']) ? $event['description'] : '',
+                'location' => isset($event['franchiseName']) ? $event['franchiseName'] : '',
+                'scan_type' => isset($event['scanType']) ? $event['scanType'] : '',
+                'scan_description' => isset($event['scanTypeDescription']) ? $event['scanTypeDescription'] : '',
+            );
+        }
+    }
+
+    // Sort events by date (newest first)
+    usort($tracking_events, function($a, $b) {
+        return strtotime($b['date']) - strtotime($a['date']);
+    });
+
+    wp_send_json_success(array(
+        'message' => 'Tracking information retrieved successfully.',
+        'tracking_events' => $tracking_events
+    ));
+}
+add_action('wp_ajax_track_shipment_action', 'aramex_track_shipment_callback');

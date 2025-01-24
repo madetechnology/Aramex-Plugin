@@ -70,7 +70,8 @@ function aramex_shipping_aunz_admin_scripts($hook) {
             'nonces' => array(
                 'create' => wp_create_nonce('create_consignment_nonce'),
                 'delete' => wp_create_nonce('delete_consignment_nonce'),
-                'print' => wp_create_nonce('print_label_nonce')
+                'print' => wp_create_nonce('print_label_nonce'),
+                'track' => wp_create_nonce('track_shipment_nonce')
             )
         )
     );

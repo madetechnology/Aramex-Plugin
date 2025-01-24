@@ -74,16 +74,32 @@ function add_custom_button_to_order_page( $order ) {
     // Add the custom button
     echo '<button type="button" class="button custom-action-button" id="custom-action-button" data-order-id="' . esc_attr( $order->get_id() ) . '">' . __( 'Create Consignment', 'aramex-shipping-aunz' ) . '</button>';
     
-    // Only show delete and print buttons if aramex_conId exists
+    // Only show delete, print, and track buttons if aramex_conId exists
     $con_id = $order->get_meta('aramex_conId');
     if ($con_id) {
+        $label_number = $order->get_meta('aramex_label_number', true) ?: $con_id;
+        
         echo '<button type="button" class="button custom-action-delete-button" id="custom-action-delete-button" data-order-id="' . esc_attr( $order->get_id() ) . '" data-consignment-id="' . esc_attr( $con_id ) . '">' . __( 'Delete Consignment', 'aramex-shipping-aunz' ) . '</button>';
         echo '<button type="button" class="button custom-action-print-label" id="custom-action-print-label" data-order-id="' . esc_attr( $order->get_id() ) . '" data-consignment-id="' . esc_attr( $con_id ) . '">' . __( 'Print Label', 'aramex-shipping-aunz' ) . '</button>';
+        echo '<button type="button" class="button custom-action-track-shipment" id="custom-action-track-shipment" data-order-id="' . esc_attr( $order->get_id() ) . '" data-consignment-id="' . esc_attr( $con_id ) . '" data-label-number="' . esc_attr( $label_number ) . '">' . __( 'Track Shipment', 'aramex-shipping-aunz' ) . '</button>';
+        
+        // Add tracking modal
+        echo '<div id="aramex-tracking-modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">';
+        echo '<div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px;">';
+        echo '<span class="close" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>';
+        echo '<h2>' . __('Shipment Tracking', 'aramex-shipping-aunz') . '</h2>';
+        echo '<div id="aramex-tracking-content"></div>';
+        echo '</div>';
+        echo '</div>';
     }
 
     // Include nonces for security
     wp_nonce_field( 'create_consignment_action', 'create_consignment_nonce' );
     wp_nonce_field( 'delete_consignment_action', 'delete_consignment_nonce' );
     wp_nonce_field( 'print_label_action', 'print_label_nonce' );
+    wp_nonce_field( 'track_shipment_action', 'track_shipment_nonce' );
 }
+
+// Add AJAX action for tracking
+add_action('wp_ajax_track_shipment_action', 'aramex_track_shipment_callback');
 
