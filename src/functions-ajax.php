@@ -5,19 +5,35 @@ defined( 'ABSPATH' ) || exit;
  * AJAX callback to test the connection.
  */
 function aramex_shipping_aunz_test_connection_ajax_callback() {
-	check_ajax_referer( 'aramex_test_connection_nonce', 'nonce' );
+	// Verify nonce
+	check_ajax_referer('aramex_test_connection_nonce', 'nonce');
 
-	$api_key        = get_option( 'aramex_shipping_aunz_api_key', '' );
-	$secret         = get_option( 'aramex_shipping_aunz_api_secret', '' );
-	$origin_country = get_option( 'aramex_shipping_aunz_origin_country', 'nz' );
+	// Get API credentials
+	$api_key = get_option('aramex_shipping_aunz_api_key', '');
+	$secret = get_option('aramex_shipping_aunz_api_secret', '');
+	$origin_country = get_option('aramex_shipping_aunz_origin_country', 'nz');
 
-	$access_token = aramex_shipping_aunz_get_access_token( $api_key, $secret, $origin_country );
-	if ( $access_token ) {
-		wp_send_json_success( array( 'message' => __( 'API connection successful.', 'aramex-shipping-aunz' ) ) );
+	// Log the test attempt
+	error_log('Aramex: Testing connection with API key: ' . substr($api_key, 0, 4) . '****');
+	
+	if (empty($api_key) || empty($secret)) {
+		error_log('Aramex: Missing API credentials');
+		wp_send_json_error(array('message' => __('API credentials are missing. Please enter your API key and secret.', 'aramex-shipping-aunz')));
+		return;
+	}
+
+	// Try to get an access token
+	$access_token = aramex_shipping_aunz_get_access_token($api_key, $secret, $origin_country);
+	
+	if ($access_token) {
+		error_log('Aramex: Connection test successful - token received');
+		wp_send_json_success(array('message' => __('API connection successful.', 'aramex-shipping-aunz')));
 	} else {
-		wp_send_json_error( array( 'message' => __( 'API connection failed. Check your credentials.', 'aramex-shipping-aunz' ) ) );
+		error_log('Aramex: Connection test failed - no token received');
+		wp_send_json_error(array('message' => __('API connection failed. Please check your credentials.', 'aramex-shipping-aunz')));
 	}
 }
+add_action('wp_ajax_aramex_shipping_aunz_test_connection_ajax', 'aramex_shipping_aunz_test_connection_ajax_callback');
 
 function aramex_create_consignment_callback() {
     // Verify the nonce
