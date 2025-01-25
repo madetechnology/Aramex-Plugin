@@ -42,6 +42,15 @@ function aramex_shipping_aunz_get_settings( $settings, $current_section ) {
 				'autoload'    => false,
 			),
 			array(
+				'title'       => __( 'Addressable API Key', 'aramex-shipping-aunz' ),
+				'type'        => 'text',
+				'desc'        => __( 'Enter your Addressable API Key for address autocomplete functionality.', 'aramex-shipping-aunz' ),
+				'id'          => 'aramex_shipping_aunz_addressable_api_key',
+				'css'         => 'min-width:300px;',
+				'default'     => '',
+				'autoload'    => false,
+			),
+			array(
 				'title'       => __( 'API Secret', 'aramex-shipping-aunz' ),
 				'type'        => 'password',
 				'desc'        => __( 'Enter your Aramex API Secret.', 'aramex-shipping-aunz' ),

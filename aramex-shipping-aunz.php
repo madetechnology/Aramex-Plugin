@@ -406,3 +406,43 @@ function aramex_admin_scripts($hook) {
 }
 add_action('admin_enqueue_scripts', 'aramex_admin_scripts');
 
+/**
+ * Enqueue scripts for address autocomplete
+ */
+function aramex_shipping_aunz_enqueue_scripts() {
+    // Only enqueue on checkout page
+    if (!is_checkout()) {
+        return;
+    }
+
+    // Enqueue CSS
+    wp_enqueue_style(
+        'addressable-autocomplete',
+        ARAMEX_PLUGIN_URL . 'assets/css/addressable-autocomplete.css',
+        array(),
+        '1.0.0'
+    );
+
+    wp_enqueue_script(
+        'addressable-autocomplete',
+        ARAMEX_PLUGIN_URL . 'assets/js/addressable-autocomplete.js',
+        array('jquery'),
+        '1.0.0',
+        true
+    );
+
+    // Get the API key from settings
+    $api_key = get_option('aramex_shipping_aunz_addressable_api_key', '');
+    $default_country = substr(get_option('woocommerce_default_country', ''), 0, 2);
+
+    wp_localize_script(
+        'addressable-autocomplete',
+        'addressableConfig',
+        array(
+            'apiKey' => $api_key,
+            'defaultCountry' => $default_country
+        )
+    );
+}
+add_action('wp_enqueue_scripts', 'aramex_shipping_aunz_enqueue_scripts');
+
