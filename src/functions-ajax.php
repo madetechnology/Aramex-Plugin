@@ -18,7 +18,7 @@ function aramex_shipping_aunz_test_connection_ajax_callback() {
 	
 	if (empty($api_key) || empty($secret)) {
 		error_log('Aramex: Missing API credentials');
-		wp_send_json_error(array('message' => __('API credentials are missing. Please enter your API key and secret.', 'aramex-shipping-aunz')));
+		wp_send_json_error(array('message' => __('API credentials are missing. Please enter your API key and secret.', 'Aramex-Plugin')));
 		return;
 	}
 
@@ -27,10 +27,10 @@ function aramex_shipping_aunz_test_connection_ajax_callback() {
 	
 	if ($access_token) {
 		error_log('Aramex: Connection test successful - token received');
-		wp_send_json_success(array('message' => __('API connection successful.', 'aramex-shipping-aunz')));
+		wp_send_json_success(array('message' => __('API connection successful.', 'Aramex-Plugin')));
 	} else {
 		error_log('Aramex: Connection test failed - no token received');
-		wp_send_json_error(array('message' => __('API connection failed. Please check your credentials.', 'aramex-shipping-aunz')));
+		wp_send_json_error(array('message' => __('API connection failed. Please check your credentials.', 'Aramex-Plugin')));
 	}
 }
 add_action('wp_ajax_aramex_shipping_aunz_test_connection_ajax', 'aramex_shipping_aunz_test_connection_ajax_callback');
@@ -198,7 +198,7 @@ function aramex_create_consignment_callback() {
     // Make the API request
     $response = wp_remote_post($api_base_url . '/api/consignments', array(
         'method' => 'POST',
-        'body' => json_encode($body),
+        'body' => wp_json_encode($body),
         'headers' => array(
             'Content-Type' => 'application/json',
             'Authorization' => 'Bearer ' . $access_token,
@@ -240,8 +240,9 @@ function aramex_create_consignment_callback() {
         $order->save();
 
         // Add the ConID to the order notes
+        /* translators: 1: Consignment ID, 2: Number of packages */
         $order->add_order_note(sprintf(
-            __('Consignment created successfully. ConID: %s. Packages: %d', 'aramex-shipping-aunz'),
+            __('Consignment created successfully. ConID: %1$s. Packages: %2$d', 'Aramex-Plugin'),
             $con_id,
             count($packages)
         ));
@@ -334,7 +335,8 @@ function aramex_delete_consignment_callback() {
         $order->save();
 
         // Add a note to the order
-        $order->add_order_note(__('Consignment deleted successfully.', 'aramex-shipping-aunz'));
+        /* translators: %s: Consignment ID */
+        $order->add_order_note(__('Consignment deleted successfully.', 'Aramex-Plugin'));
 
         wp_send_json_success(array('message' => 'Consignment deleted successfully.'));
     } else {
@@ -460,16 +462,23 @@ function aramex_print_label_callback() {
     $filepath = $upload_dir['path'] . '/' . $filename;
     $fileurl = $upload_dir['url'] . '/' . $filename;
 
-    // Save the PDF file
-    if (file_put_contents($filepath, $pdf_content) === false) {
+    // Use WP_Filesystem instead of file_put_contents
+    global $wp_filesystem;
+    if (empty($wp_filesystem)) {
+        require_once(ABSPATH . '/wp-admin/includes/file.php');
+        WP_Filesystem();
+    }
+    
+    if (!$wp_filesystem->put_contents($filepath, $pdf_content, FS_CHMOD_FILE)) {
         error_log('Error saving PDF file to: ' . $filepath);
         wp_send_json_error(array('message' => 'Error saving label PDF file.'));
         return;
     }
 
     // Add note to order
+    /* translators: 1: Consignment ID, 2: Label download URL */
     $order->add_order_note(sprintf(
-        __('Aramex shipping label generated for consignment %s. <a href="%s" target="_blank">Download Label</a>', 'aramex-shipping-aunz'),
+        __('Aramex shipping label generated for consignment %1$s. <a href="%2$s" target="_blank">Download Label</a>', 'Aramex-Plugin'),
         $con_id,
         esc_url($fileurl)
     ));
@@ -498,49 +507,49 @@ function aramex_track_shipment_callback() {
         $current_time = current_time('timestamp');
         $dummy_events = array(
             array(
-                'date' => date('Y-m-d H:i:s', $current_time - (3600 * 24)), // 24 hours ago
+                'date' => gmdate('Y-m-d H:i:s', $current_time - (3600 * 24)),
                 'status' => 'Order Created',
                 'description' => 'Shipping label created',
                 'scan_description' => 'Electronic shipping details received',
                 'location' => 'Online'
             ),
             array(
-                'date' => date('Y-m-d H:i:s', $current_time - (3600 * 20)), // 20 hours ago
+                'date' => gmdate('Y-m-d H:i:s', $current_time - (3600 * 20)),
                 'status' => 'Picked Up',
                 'description' => 'Shipment picked up by courier',
                 'scan_description' => 'Picked up by courier',
                 'location' => 'Auckland Depot'
             ),
             array(
-                'date' => date('Y-m-d H:i:s', $current_time - (3600 * 16)), // 16 hours ago
+                'date' => gmdate('Y-m-d H:i:s', $current_time - (3600 * 16)),
                 'status' => 'In Transit',
                 'description' => 'Arrived at sorting facility',
                 'scan_description' => 'Package received at facility',
                 'location' => 'Auckland Distribution Center'
             ),
             array(
-                'date' => date('Y-m-d H:i:s', $current_time - (3600 * 12)), // 12 hours ago
+                'date' => gmdate('Y-m-d H:i:s', $current_time - (3600 * 12)),
                 'status' => 'In Transit',
                 'description' => 'Departed sorting facility',
                 'scan_description' => 'Package has left the facility',
                 'location' => 'Auckland Distribution Center'
             ),
             array(
-                'date' => date('Y-m-d H:i:s', $current_time - (3600 * 8)), // 8 hours ago
+                'date' => gmdate('Y-m-d H:i:s', $current_time - (3600 * 8)),
                 'status' => 'In Transit',
                 'description' => 'Arrived at destination facility',
                 'scan_description' => 'Package arrived at destination facility',
                 'location' => 'Wellington Distribution Center'
             ),
             array(
-                'date' => date('Y-m-d H:i:s', $current_time - (3600 * 4)), // 4 hours ago
+                'date' => gmdate('Y-m-d H:i:s', $current_time - (3600 * 4)),
                 'status' => 'Out for Delivery',
                 'description' => 'With delivery courier',
                 'scan_description' => 'Out for delivery',
                 'location' => 'Wellington Local Courier'
             ),
             array(
-                'date' => date('Y-m-d H:i:s', $current_time - (3600 * 1)), // 1 hour ago
+                'date' => gmdate('Y-m-d H:i:s', $current_time - (3600 * 1)),
                 'status' => 'Delivery Attempted',
                 'description' => 'First delivery attempt',
                 'scan_description' => 'No one available to receive package',

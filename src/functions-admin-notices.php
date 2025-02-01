@@ -26,10 +26,18 @@ function aramex_shipping_aunz_admin_notices() {
 
         echo '<div class="notice notice-warning is-dismissible">';
         echo '<p>';
-        echo sprintf(
-            __( 'Aramex Shipping: The following store address details are missing: %s. Please update them in the <a href="%s">WooCommerce settings</a>.', 'aramex-shipping-aunz' ),
-            esc_html( $missing_fields_list ),
-            esc_url( $settings_url )
+        /* translators: 1: List of missing fields, 2: URL to WooCommerce settings */
+        echo wp_kses(
+            sprintf(
+                __('Aramex Shipping: The following store address details are missing: %1$s. Please update them in the <a href="%2$s">WooCommerce settings</a>.', 'Aramex-Plugin'),
+                esc_html($missing_fields_list),
+                esc_url($settings_url)
+            ),
+            array(
+                'a' => array(
+                    'href' => array()
+                )
+            )
         );
         echo '</p>';
         echo '</div>';

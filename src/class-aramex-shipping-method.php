@@ -8,10 +8,10 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 		protected $origin_country;
 
 		public function __construct( $instance_id = 0 ) {
-			$this->id                 = 'my_shipping_method';
+			$this->id                 = 'aramex_shipping';
 			$this->instance_id        = absint( $instance_id );
-			$this->method_title       = __( 'Aramex Shipping Method', 'aramex-shipping-aunz' );
-			$this->method_description = __( 'Custom shipping method using Aramex API.', 'aramex-shipping-aunz' );
+			$this->method_title       = __( 'Aramex Shipping Method', 'Aramex-Plugin' );
+			$this->method_description = __( 'Custom shipping method using Aramex API.', 'Aramex-Plugin' );
 			$this->supports           = array(
 				'shipping-zones',
 				'instance-settings',
@@ -33,95 +33,94 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 		}
 
 		public function init_form_fields() {
-			$this->instance_form_fields = array(
+			$this->form_fields = array(
 				'title' => array(
-					'title'       => __( 'Method Title', 'aramex-shipping-aunz' ),
+					'title'       => __( 'Method Title', 'Aramex-Plugin' ),
 					'type'        => 'text',
-					'description' => __( 'This controls the title which the user sees during checkout.', 'aramex-shipping-aunz' ),
-					'default'     => __( 'Aramex Shipping', 'aramex-shipping-aunz' ),
-					'desc_tip'    => true,
+					'description' => __( 'This controls the title which the user sees during checkout.', 'Aramex-Plugin' ),
+					'default'     => __( 'Aramex Shipping', 'Aramex-Plugin' ),
 				),
 				'packaging_type' => array(
-					'title'       => __( 'Packaging Type', 'aramex-shipping-aunz' ),
+					'title'       => __( 'Packaging Type', 'Aramex-Plugin' ),
 					'type'        => 'select',
-					'description' => __( 'Choose how to package items.', 'aramex-shipping-aunz' ),
-					'default'     => 'product_dimensions',
+					'description' => __( 'Choose how to package items.', 'Aramex-Plugin' ),
+					'default'     => 'single_box',
 					'options'     => array(
-						'single_box'         => __( 'Single Box', 'aramex-shipping-aunz' ),
-						'fixed_size'         => __( 'Fixed Size Boxes', 'aramex-shipping-aunz' ),
-						'product_dimensions' => __( 'Product Dimensions', 'aramex-shipping-aunz' ),
+						'single_box'         => __( 'Single Box', 'Aramex-Plugin' ),
+						'fixed_size'         => __( 'Fixed Size Boxes', 'Aramex-Plugin' ),
+						'product_dimensions' => __( 'Product Dimensions', 'Aramex-Plugin' ),
 					),
 				),
 				'allow_customer_packaging' => array(
-					'title'       => __( 'Customer Packaging Choice', 'aramex-shipping-aunz' ),
+					'title'       => __( 'Customer Packaging Choice', 'Aramex-Plugin' ),
 					'type'        => 'checkbox',
-					'description' => __( 'Allow customers to choose packaging type at checkout.', 'aramex-shipping-aunz' ),
+					'description' => __( 'Allow customers to choose packaging type at checkout.', 'Aramex-Plugin' ),
 					'default'     => 'no',
 				),
 				'custom_boxes' => array(
-					'title'       => __( 'Custom Box Sizes', 'aramex-shipping-aunz' ),
+					'title'       => __( 'Custom Box Sizes', 'Aramex-Plugin' ),
 					'type'        => 'textarea',
-					'description' => __( 'Define custom box sizes in JSON format. Example: {"SMALL":{"length":20,"width":20,"height":20,"weight":5}}', 'aramex-shipping-aunz' ),
+					'description' => __( 'Enter custom box dimensions in JSON format. Example: {"small":{"length":20,"width":20,"height":20,"weight":5}}', 'Aramex-Plugin' ),
 					'default'     => '',
 					'css'        => 'height: 150px;',
 				),
-				'package_types_title' => array(
-					'title'       => __( 'Supported Aramex Shipping Package Types', 'aramex-shipping-aunz' ),
+				'package_types' => array(
+					'title'       => __( 'Supported Aramex Shipping Package Types', 'Aramex-Plugin' ),
 					'type'        => 'title',
-					'description' => __( 'Enable or disable specific satchel and box sizes. Disabled sizes will not be offered at checkout.', 'aramex-shipping-aunz' ),
+					'description' => __( 'Enable or disable specific satchel and box sizes. Disabled sizes will not be offered at checkout.', 'Aramex-Plugin' ),
 				),
-				'enable_satchel_300gm' => array(
-					'title'       => __( 'Satchel 300GM (22.0 x 16.5 cm)', 'aramex-shipping-aunz' ),
+				'satchel_300gm' => array(
+					'title'       => __( 'Satchel 300GM (22.0 x 16.5 cm)', 'Aramex-Plugin' ),
 					'type'        => 'checkbox',
-					'description' => __( 'Maximum weight: 0.3 kg. Available in: Australia', 'aramex-shipping-aunz' ),
+					'description' => __( 'Maximum weight: 0.3 kg. Available in: Australia', 'Aramex-Plugin' ),
 					'default'     => 'yes',
 				),
-				'enable_satchel_dl' => array(
-					'title'       => __( 'Satchel DL (12.6 x 24.0 cm)', 'aramex-shipping-aunz' ),
+				'satchel_dl' => array(
+					'title'       => __( 'Satchel DL (12.6 x 24.0 cm)', 'Aramex-Plugin' ),
 					'type'        => 'checkbox',
-					'description' => __( 'Maximum weight: 5 kg. Available in: New Zealand', 'aramex-shipping-aunz' ),
+					'description' => __( 'Maximum weight: 5 kg. Available in: New Zealand', 'Aramex-Plugin' ),
 					'default'     => 'yes',
 				),
-				'enable_satchel_a5' => array(
-					'title'       => __( 'Satchel A5 (19.0 x 26.0 cm)', 'aramex-shipping-aunz' ),
+				'satchel_a5' => array(
+					'title'       => __( 'Satchel A5 (19.0 x 26.0 cm)', 'Aramex-Plugin' ),
 					'type'        => 'checkbox',
-					'description' => __( 'Maximum weight: 5 kg. Available in: Australia, New Zealand', 'aramex-shipping-aunz' ),
+					'description' => __( 'Maximum weight: 5 kg. Available in: Australia, New Zealand', 'Aramex-Plugin' ),
 					'default'     => 'yes',
 				),
-				'enable_satchel_a4' => array(
-					'title'       => __( 'Satchel A4 (25.0 x 32.5 cm)', 'aramex-shipping-aunz' ),
+				'satchel_a4' => array(
+					'title'       => __( 'Satchel A4 (25.0 x 32.5 cm)', 'Aramex-Plugin' ),
 					'type'        => 'checkbox',
-					'description' => __( 'Maximum weight: 5 kg. Available in: Australia, New Zealand', 'aramex-shipping-aunz' ),
+					'description' => __( 'Maximum weight: 5 kg. Available in: Australia, New Zealand', 'Aramex-Plugin' ),
 					'default'     => 'yes',
 				),
-				'enable_satchel_a3' => array(
-					'title'       => __( 'Satchel A3 (32.5 x 44.0 cm)', 'aramex-shipping-aunz' ),
+				'satchel_a3' => array(
+					'title'       => __( 'Satchel A3 (32.5 x 44.0 cm)', 'Aramex-Plugin' ),
 					'type'        => 'checkbox',
-					'description' => __( 'Maximum weight: 5 kg. Available in: Australia, New Zealand', 'aramex-shipping-aunz' ),
+					'description' => __( 'Maximum weight: 5 kg. Available in: Australia, New Zealand', 'Aramex-Plugin' ),
 					'default'     => 'yes',
 				),
-				'enable_satchel_a2' => array(
-					'title'       => __( 'Satchel A2 (45.0 x 61.0 cm)', 'aramex-shipping-aunz' ),
+				'satchel_a2' => array(
+					'title'       => __( 'Satchel A2 (45.0 x 61.0 cm)', 'Aramex-Plugin' ),
 					'type'        => 'checkbox',
-					'description' => __( 'Maximum weight: 5 kg. Available in: Australia, New Zealand', 'aramex-shipping-aunz' ),
+					'description' => __( 'Maximum weight: 5 kg. Available in: Australia, New Zealand', 'Aramex-Plugin' ),
 					'default'     => 'yes',
 				),
-				'enable_box_small' => array(
-					'title'       => __( 'Small Box (20 x 20 x 20 cm)', 'aramex-shipping-aunz' ),
+				'box_small' => array(
+					'title'       => __( 'Small Box (20 x 20 x 20 cm)', 'Aramex-Plugin' ),
 					'type'        => 'checkbox',
-					'description' => __( 'Maximum weight: 5 kg', 'aramex-shipping-aunz' ),
+					'description' => __( 'Maximum weight: 5 kg', 'Aramex-Plugin' ),
 					'default'     => 'yes',
 				),
-				'enable_box_medium' => array(
-					'title'       => __( 'Medium Box (30 x 30 x 30 cm)', 'aramex-shipping-aunz' ),
+				'box_medium' => array(
+					'title'       => __( 'Medium Box (30 x 30 x 30 cm)', 'Aramex-Plugin' ),
 					'type'        => 'checkbox',
-					'description' => __( 'Maximum weight: 10 kg', 'aramex-shipping-aunz' ),
+					'description' => __( 'Maximum weight: 10 kg', 'Aramex-Plugin' ),
 					'default'     => 'yes',
 				),
-				'enable_box_large' => array(
-					'title'       => __( 'Large Box (40 x 40 x 40 cm)', 'aramex-shipping-aunz' ),
+				'box_large' => array(
+					'title'       => __( 'Large Box (40 x 40 x 40 cm)', 'Aramex-Plugin' ),
 					'type'        => 'checkbox',
-					'description' => __( 'Maximum weight: 20 kg', 'aramex-shipping-aunz' ),
+					'description' => __( 'Maximum weight: 20 kg', 'Aramex-Plugin' ),
 					'default'     => 'yes',
 				),
 			);

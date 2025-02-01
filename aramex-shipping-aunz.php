@@ -1,11 +1,14 @@
 <?php
 /**
- * Plugin Name: Aramex Shipping Aunz
+ * Plugin Name: Aramex Shipping AUNZ
+ * Plugin URI: https://github.com/madeinoz67/aramex-shipping-aunz
+ * Description: Aramex shipping integration for WooCommerce
  * Version: 1.0.0
- * Author: ADSO Developers
- * Author URI: https://adso.co.nz
- * Text Domain: aramex-shipping-aunz
+ * Author: Stephen Eaton
+ * Text Domain: Aramex-Plugin-main
  * Domain Path: /languages
+ * Requires at least: 5.8
+ * Requires PHP: 7.4
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -191,33 +194,38 @@ function add_custom_button_to_order_page( $order ) {
         return;
     }
 
-    // Add the custom button
-    echo '<button type="button" class="button custom-action-button" id="custom-action-button" data-order-id="' . esc_attr( $order->get_id() ) . '">' . __( 'Create Consignment', 'aramex-shipping-aunz' ) . '</button>';
+    // Add custom button
+    echo '<button type="button" class="button custom-action-button" id="custom-action-button" data-order-id="' . esc_attr($order->get_id()) . '">' . 
+        esc_html__('Create Consignment', 'Aramex-Plugin-main') . '</button>';
     
     // Only show delete, print, and track buttons if aramex_conId exists
     $con_id = $order->get_meta('aramex_conId');
     if ($con_id) {
         $label_number = $order->get_meta('aramex_label_number', true) ?: $con_id;
         
-        echo '<button type="button" class="button custom-action-delete-button" id="custom-action-delete-button" data-order-id="' . esc_attr( $order->get_id() ) . '" data-consignment-id="' . esc_attr( $con_id ) . '">' . __( 'Delete Consignment', 'aramex-shipping-aunz' ) . '</button>';
-        echo '<button type="button" class="button custom-action-print-label" id="custom-action-print-label" data-order-id="' . esc_attr( $order->get_id() ) . '" data-consignment-id="' . esc_attr( $con_id ) . '">' . __( 'Print Label', 'aramex-shipping-aunz' ) . '</button>';
-        echo '<button type="button" class="button custom-action-track-shipment" id="custom-action-track-shipment" data-order-id="' . esc_attr( $order->get_id() ) . '" data-consignment-id="' . esc_attr( $con_id ) . '" data-label-number="' . esc_attr( $label_number ) . '">' . __( 'Track Shipment', 'aramex-shipping-aunz' ) . '</button>';
+        echo '<button type="button" class="button custom-action-delete-button" id="custom-action-delete-button" data-order-id="' . esc_attr($order->get_id()) . 
+            '" data-consignment-id="' . esc_attr($con_id) . '">' . esc_html__('Delete Consignment', 'Aramex-Plugin-main') . '</button>';
+        echo '<button type="button" class="button custom-action-print-label" id="custom-action-print-label" data-order-id="' . esc_attr($order->get_id()) . 
+            '" data-consignment-id="' . esc_attr($con_id) . '">' . esc_html__('Print Label', 'Aramex-Plugin-main') . '</button>';
+        echo '<button type="button" class="button custom-action-track-shipment" id="custom-action-track-shipment" data-order-id="' . esc_attr($order->get_id()) . 
+            '" data-consignment-id="' . esc_attr($con_id) . '" data-label-number="' . esc_attr($label_number) . '">' . 
+            esc_html__('Track Shipment', 'Aramex-Plugin-main') . '</button>';
         
         // Add tracking modal
         echo '<div id="aramex-tracking-modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">';
         echo '<div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px;">';
         echo '<span class="close" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>';
-        echo '<h2>' . __('Shipment Tracking', 'aramex-shipping-aunz') . '</h2>';
+        echo '<h2>' . esc_html__('Shipment Tracking', 'Aramex-Plugin-main') . '</h2>';
         echo '<div id="aramex-tracking-content"></div>';
         echo '</div>';
         echo '</div>';
     }
 
     // Include nonces for security
-    wp_nonce_field( 'create_consignment_action', 'create_consignment_nonce' );
-    wp_nonce_field( 'delete_consignment_action', 'delete_consignment_nonce' );
-    wp_nonce_field( 'print_label_action', 'print_label_nonce' );
-    wp_nonce_field( 'track_shipment_action', 'track_shipment_nonce' );
+    wp_nonce_field('create_consignment_action', 'create_consignment_nonce');
+    wp_nonce_field('delete_consignment_action', 'delete_consignment_nonce');
+    wp_nonce_field('print_label_action', 'print_label_nonce');
+    wp_nonce_field('track_shipment_action', 'track_shipment_nonce');
 }
 
 // Add AJAX action for tracking
@@ -236,7 +244,7 @@ function aramex_add_order_action($actions) {
     
     $label_number = $theorder->get_meta('aramex_label_number', true);
     if (!empty($label_number)) {
-        $actions['aramex_send_tracking_email'] = __('Send Tracking Email Update to customer', 'aramex-shipping-aunz');
+        $actions['aramex_send_tracking_email'] = __( 'Send Tracking Email Update to customer', 'Aramex-Plugin-main' );
     }
     
     return $actions;
@@ -257,7 +265,7 @@ function aramex_handle_tracking_email($order) {
     $label_number = $order->get_meta('aramex_label_number', true);
     if (empty($label_number)) {
         error_log('Aramex: No label number found for order ' . $order->get_id());
-        $order->add_order_note(__('Failed to send tracking email: No label number found', 'aramex-shipping-aunz'));
+        $order->add_order_note(__( 'Failed to send tracking email: No label number found', 'Aramex-Plugin-main' ));
         return;
     }
 
@@ -270,10 +278,10 @@ function aramex_handle_tracking_email($order) {
     $email_sent = aramex_send_tracking_email($order, $tracking_info);
     if ($email_sent) {
         error_log('Aramex: Email sent successfully to ' . $order->get_billing_email());
-        $order->add_order_note(__('Tracking information email sent to customer.', 'aramex-shipping-aunz'));
+        $order->add_order_note(__( 'Tracking information email sent to customer.', 'Aramex-Plugin-main' ));
     } else {
         error_log('Aramex: Failed to send email to ' . $order->get_billing_email());
-        $order->add_order_note(__('Failed to send tracking email. Please check server email configuration.', 'aramex-shipping-aunz'));
+        $order->add_order_note(__( 'Failed to send tracking email. Please check server email configuration.', 'Aramex-Plugin-main' ));
     }
 }
 
@@ -282,7 +290,8 @@ function aramex_handle_tracking_email($order) {
  */
 function aramex_send_tracking_email($order, $tracking_info) {
     $to = $order->get_billing_email();
-    $subject = sprintf(__('Tracking Update for Order #%s', 'aramex-shipping-aunz'), $order->get_order_number());
+    /* translators: %s: Order number */
+    $subject = sprintf(esc_html__('Tracking Update for Order #%s', 'Aramex-Plugin-main'), $order->get_order_number());
     
     error_log('Aramex: Preparing email for order ' . $order->get_id() . ' to ' . $to);
     
@@ -300,26 +309,27 @@ function aramex_send_tracking_email($order, $tracking_info) {
     </head>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <p style="margin-bottom: 20px;"><?php printf(__('Hello %s,', 'aramex-shipping-aunz'), $order->get_billing_first_name()); ?></p>
+            /* translators: %s: Customer's first name */
+            <p style="margin-bottom: 20px;"><?php printf(esc_html__('Hello %s,', 'Aramex-Plugin-main'), esc_html($order->get_billing_first_name())); ?></p>
             
             <?php if (!$tracking_info['success'] || empty($tracking_info['events'])): ?>
-                <p style="margin-bottom: 20px;"><?php _e('Your order has been processed and a shipping label has been created. The package is currently awaiting pickup by our courier partner.', 'aramex-shipping-aunz'); ?></p>
+                <p style="margin-bottom: 20px;"><?php esc_html_e('Your order has been processed and is awaiting pickup by our courier partner.', 'Aramex-Plugin-main'); ?></p>
                 
-                <p style="margin-bottom: 20px;"><?php _e('Once the package is picked up, you will start seeing tracking updates here. This usually happens within 1-2 business days.', 'aramex-shipping-aunz'); ?></p>
+                <p style="margin-bottom: 20px;"><?php esc_html_e('Pickup usually happens within 1-2 business days.', 'Aramex-Plugin-main'); ?></p>
                 
                 <div style="background-color: #f8f8f8; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin: 20px 0;">
-                    <p style="margin: 0;"><strong><?php _e('Tracking Number:', 'aramex-shipping-aunz'); ?></strong> <?php echo esc_html($order->get_meta('aramex_label_number', true)); ?></p>
+                    <p style="margin: 0;"><strong><?php esc_html_e('Tracking Number:', 'Aramex-Plugin-main'); ?></strong> <?php echo esc_html($order->get_meta('aramex_label_number', true)); ?></p>
                 </div>
             <?php else: ?>
-                <p style="margin-bottom: 20px;"><?php _e('Here is the current tracking information for your order:', 'aramex-shipping-aunz'); ?></p>
+                <p style="margin-bottom: 20px;"><?php esc_html_e('Here is the current tracking information for your order:', 'Aramex-Plugin-main'); ?></p>
                 
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
                     <thead>
                         <tr style="background-color: #f8f8f8;">
-                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;"><?php _e('Date/Time', 'aramex-shipping-aunz'); ?></th>
-                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;"><?php _e('Status', 'aramex-shipping-aunz'); ?></th>
-                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;"><?php _e('Description', 'aramex-shipping-aunz'); ?></th>
-                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;"><?php _e('Location', 'aramex-shipping-aunz'); ?></th>
+                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;"><?php esc_html_e('Date/Time', 'Aramex-Plugin-main'); ?></th>
+                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;"><?php esc_html_e('Status', 'Aramex-Plugin-main'); ?></th>
+                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;"><?php esc_html_e('Description', 'Aramex-Plugin-main'); ?></th>
+                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;"><?php esc_html_e('Location', 'Aramex-Plugin-main'); ?></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -335,10 +345,10 @@ function aramex_send_tracking_email($order, $tracking_info) {
                 </table>
             <?php endif; ?>
             
-            <p style="margin-top: 20px;"><?php _e('Thank you for choosing our service.', 'aramex-shipping-aunz'); ?></p>
+            <p style="margin-top: 20px;"><?php esc_html_e('Thank you for choosing our service.', 'Aramex-Plugin-main'); ?></p>
             
             <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
-                <?php _e('If you have any questions about your shipment, please don\'t hesitate to contact us.', 'aramex-shipping-aunz'); ?>
+                <?php esc_html_e('If you have any questions about your shipment, please don\'t hesitate to contact us.', 'Aramex-Plugin-main'); ?>
             </p>
         </div>
     </body>
@@ -395,11 +405,14 @@ function aramex_admin_scripts($hook) {
 
     // Localize the script with data
     wp_localize_script('aramex-admin', 'aramexAdmin', array(
-        'ajax_url' => admin_url('admin-ajax.php'),
+        'ajax_url' => esc_url(admin_url('admin-ajax.php')),
         'nonce' => wp_create_nonce('aramex_test_connection_nonce'),
-        'testing_text' => __('Testing...', 'aramex-shipping-aunz'),
-        'test_connection_error' => __('Connection test failed. Please check your credentials.', 'aramex-shipping-aunz'),
-        'test_connection_success' => __('Connection test successful!', 'aramex-shipping-aunz')
+        /* translators: Text shown while testing API connection */
+        'testing_text' => esc_html__('Testing...', 'Aramex-Plugin-main'),
+        /* translators: Error message shown when API connection fails */
+        'test_connection_error' => esc_html__('Connection test failed. Please check your credentials.', 'Aramex-Plugin-main'),
+        /* translators: Success message shown when API connection succeeds */
+        'test_connection_success' => esc_html__('Connection test successful!', 'Aramex-Plugin-main')
     ));
 
     wp_enqueue_script('aramex-admin');

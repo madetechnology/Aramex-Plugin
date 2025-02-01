@@ -48,20 +48,20 @@ function aramex_shipping_aunz_add_checkout_fields( $fields ) {
 
 	$fields['shipping']['aramex_packaging_type'] = array(
 		'type'          => 'select',
-		'label'         => __( 'Packaging Type', 'aramex-shipping-aunz' ),
+		'label'         => __( 'Packaging Type', 'Aramex-Plugin' ),
 		'required'      => true,
 		'class'         => array( 'form-row-wide' ),
 		'options'       => array(
-			'auto'           => __( 'Auto Select', 'aramex-shipping-aunz' ),
-			'single_satchel' => __( 'Single Satchel', 'aramex-shipping-aunz' ),
-			'single_box'     => __( 'Single Box', 'aramex-shipping-aunz' ),
-			'multiple_boxes' => __( 'Multiple Boxes', 'aramex-shipping-aunz' ),
+			'auto'           => __( 'Auto Select', 'Aramex-Plugin' ),
+			'single_satchel' => __( 'Single Satchel', 'Aramex-Plugin' ),
+			'single_box'     => __( 'Single Box', 'Aramex-Plugin' ),
+			'multiple_boxes' => __( 'Multiple Boxes', 'Aramex-Plugin' ),
 		),
 	);
 
 	$fields['shipping']['aramex_satchel_size'] = array(
 		'type'          => 'select',
-		'label'         => __( 'Satchel Size', 'aramex-shipping-aunz' ),
+		'label'         => __( 'Satchel Size', 'Aramex-Plugin' ),
 		'required'      => false,
 		'class'         => array( 'form-row-wide', 'aramex-satchel-size' ),
 		'options'       => $satchel_options,

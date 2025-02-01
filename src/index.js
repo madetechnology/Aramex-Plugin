@@ -20,20 +20,20 @@ const MyExamplePage = () => {
 		<Fragment>
 			<Woo.Section component="article">
 				<Woo.SectionHeader
-					title={ __( 'Free Text Field', 'aramex-shipping-aunz' ) }
+					title={ __( 'Free Text Field', 'Aramex-Plugin' ) }
 				/>
 				<TextControl
-					label={ __( 'Your Input', 'aramex-shipping-aunz' ) }
-					placeholder={ __( 'Type something...', 'aramex-shipping-aunz' ) }
+					label={ __( 'Your Input', 'Aramex-Plugin' ) }
+					placeholder={ __( 'Type something...', 'Aramex-Plugin' ) }
 					value={ freeText } // Bind the state to the value
 					onChange={ ( value ) => setFreeText( value ) } // Update state on change
-					help={ __( 'Enter any text here.', 'aramex-shipping-aunz' ) }
+					help={ __( 'Enter any text here.', 'Aramex-Plugin' ) }
 				/>
 			</Woo.Section>
 
 			<Woo.Section component="article">
 				<Woo.SectionHeader
-					title={ __( 'Search', 'aramex-shipping-aunz' ) }
+					title={ __( 'Search', 'Aramex-Plugin' ) }
 				/>
 				<Woo.Search
 					type="products"
@@ -46,7 +46,7 @@ const MyExamplePage = () => {
 
 			<Woo.Section component="article">
 				<Woo.SectionHeader
-					title={ __( 'Dropdown', 'aramex-shipping-aunz' ) }
+					title={ __( 'Dropdown', 'Aramex-Plugin' ) }
 				/>
 				<Dropdown
 					renderToggle={ ( { isOpen, onToggle } ) => (
@@ -62,16 +62,16 @@ const MyExamplePage = () => {
 
 			<Woo.Section component="article">
 				<Woo.SectionHeader
-					title={ __( 'Pill shaped container', 'aramex-shipping-aunz' ) }
+					title={ __( 'Pill shaped container', 'Aramex-Plugin' ) }
 				/>
 				<Woo.Pill className={ 'pill' }>
-					{ __( 'Pill Shape Container', 'aramex-shipping-aunz' ) }
+					{ __( 'Pill Shape Container', 'Aramex-Plugin' ) }
 				</Woo.Pill>
 			</Woo.Section>
 
 			<Woo.Section component="article">
 				<Woo.SectionHeader
-					title={ __( 'Spinner', 'aramex-shipping-aunz' ) }
+					title={ __( 'Spinner', 'Aramex-Plugin' ) }
 				/>
 				<Woo.H>I am a spinner!</Woo.H>
 				<Woo.Spinner />
@@ -79,10 +79,10 @@ const MyExamplePage = () => {
 
 			<Woo.Section component="article">
 				<Woo.SectionHeader
-					title={ __( 'Datepicker', 'aramex-shipping-aunz' ) }
+					title={ __( 'Datepicker', 'Aramex-Plugin' ) }
 				/>
 				<Woo.DatePicker
-					text={ __( 'I am a datepicker!', 'aramex-shipping-aunz' ) }
+					text={ __( 'I am a datepicker!', 'Aramex-Plugin' ) }
 					dateFormat={ 'MM/DD/YYYY' }
 				/>
 			</Woo.Section>
@@ -92,13 +92,13 @@ const MyExamplePage = () => {
 
 addFilter(
 	'woocommerce_admin_pages_list',
-	'aramex-shipping-aunz',
+	'Aramex-Plugin',
 	( pages ) => {
 		pages.push( {
 			container: MyExamplePage,
-			path: '/aramex-shipping-aunz',
+			path: '/Aramex-Plugin',
 			breadcrumbs: [
-				__( 'Aramex Shipping Aunz', 'aramex-shipping-aunz' ),
+				__( 'Aramex Shipping AUNZ', 'Aramex-Plugin' ),
 			],
 			navArgs: {
 				id: 'aramex_shipping_aunz',
