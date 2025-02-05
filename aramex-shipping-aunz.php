@@ -10,6 +10,8 @@
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Tested up to: 6.7
+ * WC requires at least: 6.0
+ * WC tested up to: 8.6
  *
  * License: GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -207,7 +209,7 @@ function aramex_shipping_aunz_shipping_method_init() {
 }
 
 function aramex_shipping_aunz_add_my_shipping_method( $methods ) {
-	$methods['my_shipping_method'] = 'My_Shipping_Method';
+	$methods['aramex_shipping'] = 'My_Shipping_Method';
 	return $methods;
 }
 
@@ -222,9 +224,9 @@ function add_custom_button_to_order_page( $order ) {
         . esc_html__( 'Create Consignment', 'Aramex-Plugin' ) . '</button>';
     
     // Only show delete, print, and track buttons if aramex_conId exists
-    $con_id = $order->get_meta( 'aramex_conId' );
+    $con_id = aramex_get_order_meta($order, 'aramex_conId');
     if ( $con_id ) {
-        $label_number = $order->get_meta( 'aramex_label_number', true ) ?: $con_id;
+        $label_number = aramex_get_order_meta($order, 'aramex_label_number') ?: $con_id;
         
         echo '<button type="button" class="button custom-action-delete-button" id="custom-action-delete-button" data-order-id="' . esc_attr( $order->get_id() ) 
             . '" data-consignment-id="' . esc_attr( $con_id ) . '">' 
@@ -290,7 +292,7 @@ function aramex_handle_tracking_email( $order ) {
         return;
     }
 
-    $label_number = $order->get_meta( 'aramex_label_number', true );
+    $label_number = aramex_get_order_meta($order, 'aramex_label_number');
     if ( empty( $label_number ) ) {
         aramex_debug_log( 'Aramex: No label number found for order ' . $order->get_id() );
         $order->add_order_note(
@@ -503,3 +505,89 @@ function aramex_shipping_aunz_enqueue_scripts() {
     );
 }
 add_action( 'wp_enqueue_scripts', 'aramex_shipping_aunz_enqueue_scripts' );
+
+/**
+ * Get order meta compatibility wrapper
+ */
+function aramex_get_order_meta($order, $key, $single = true) {
+    if (is_numeric($order)) {
+        $order = wc_get_order($order);
+    }
+    
+    if (!$order) {
+        return false;
+    }
+
+    if (method_exists($order, 'get_meta')) {
+        return $order->get_meta($key, $single);
+    }
+    
+    return get_post_meta($order->get_id(), $key, $single);
+}
+
+/**
+ * Update order meta compatibility wrapper
+ */
+function aramex_update_order_meta($order, $key, $value) {
+    if (is_numeric($order)) {
+        $order = wc_get_order($order);
+    }
+    
+    if (!$order) {
+        return false;
+    }
+
+    if (method_exists($order, 'update_meta_data')) {
+        $order->update_meta_data($key, $value);
+        $order->save();
+        return true;
+    }
+    
+    return update_post_meta($order->get_id(), $key, $value);
+}
+
+/**
+ * Delete order meta compatibility wrapper
+ */
+function aramex_delete_order_meta($order, $key) {
+    if (is_numeric($order)) {
+        $order = wc_get_order($order);
+    }
+    
+    if (!$order) {
+        return false;
+    }
+
+    if (method_exists($order, 'delete_meta_data')) {
+        $order->delete_meta_data($key);
+        $order->save();
+        return true;
+    }
+    
+    return delete_post_meta($order->get_id(), $key);
+}
+
+/**
+ * Handle WordPress data store warnings
+ */
+function aramex_handle_wp_scripts() {
+    // Only on admin pages
+    if (!is_admin()) {
+        return;
+    }
+
+    // Add script to handle deprecated warnings
+    wp_add_inline_script('wp-data', '
+        // Prevent "Store is already registered" warning
+        wp.data && wp.data.dispatch && wp.data.dispatch( "core/notices" ) && 
+        wp.data.dispatch( "core/notices" ).createNotice && 
+        window.console.warn = (function(old_function) { 
+            return function(text) {
+                if (!text.includes("Store") && !text.includes("select")) {
+                    old_function.apply(console, arguments);
+                }
+            }
+        })(window.console.warn);
+    ');
+}
+add_action('admin_enqueue_scripts', 'aramex_handle_wp_scripts', 100);

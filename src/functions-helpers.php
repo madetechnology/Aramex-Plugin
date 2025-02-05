@@ -5,9 +5,20 @@ defined( 'ABSPATH' ) || exit;
  * Get the API base URL for the selected country.
  */
 function aramex_shipping_aunz_get_api_base_url( $origin_country ) {
-	return ( $origin_country === 'au' ) 
-		? 'https://api.aramexconnect.com.au'
-		: 'https://api.aramexconnect.co.nz';
+	aramex_debug_log( 'Getting API URL for origin country: ' . $origin_country );
+	
+	// Ensure we have a valid country code
+	$origin_country = strtolower(trim($origin_country));
+	
+	// Strict comparison for country code
+	if ($origin_country === 'au') {
+		$api_url = 'https://api.aramexconnect.com.au';
+	} else {
+		$api_url = 'https://api.aramexconnect.co.nz';
+	}
+	
+	aramex_debug_log( 'Using API URL: ' . $api_url );
+	return $api_url;
 }
 
 /**
@@ -173,10 +184,19 @@ if ( ! function_exists( 'aramex_debug_log' ) ) {
 function aramex_shipping_aunz_get_access_token( $api_key, $secret, $origin_country ) {
 	aramex_debug_log( 'Fetching access token...' );
 
-	// Set the correct token endpoint based on country
-	$url = ( $origin_country === 'au' ) 
-		? 'https://identity.aramexconnect.com.au/connect/token'
-		: 'https://identity.aramexconnect.co.nz/connect/token';
+	// Ensure we have a valid country code
+	$origin_country = strtolower(trim($origin_country));
+
+	// Set the correct token endpoint and scope based on country
+	if ($origin_country === 'au') {
+		$url = 'https://identity.aramexconnect.com.au/connect/token';
+		$scope = 'ac-api-au';
+	} else {
+		$url = 'https://identity.aramexconnect.co.nz/connect/token';
+		$scope = 'ac-api-nz';
+	}
+
+	aramex_debug_log( 'Using auth endpoint: ' . $url . ' with scope: ' . $scope );
 
 	$response = wp_remote_post(
 		$url,
@@ -186,7 +206,7 @@ function aramex_shipping_aunz_get_access_token( $api_key, $secret, $origin_count
 				'grant_type'    => 'client_credentials',
 				'client_id'     => $api_key,
 				'client_secret' => $secret,
-				'scope'         => '',  // Empty scope as per API documentation
+				'scope'         => $scope,
 			),
 			'timeout' => 45,
 		)

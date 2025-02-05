@@ -17,11 +17,20 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 				'instance-settings',
 			);
 
+			$this->init();
+
+			// Load settings after init
+			$this->refresh_settings();
+		}
+
+		/**
+		 * Refresh settings from options
+		 */
+		private function refresh_settings() {
 			$this->api_key        = get_option( 'aramex_shipping_aunz_api_key', '' );
 			$this->secret         = get_option( 'aramex_shipping_aunz_api_secret', '' );
 			$this->origin_country = get_option( 'aramex_shipping_aunz_origin_country', 'nz' );
-
-			$this->init();
+			aramex_debug_log( 'Refreshed settings - Origin Country: ' . $this->origin_country );
 		}
 
 		public function init() {
@@ -128,6 +137,7 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 
 		public function process_admin_options() {
 			parent::process_admin_options();
+			$this->refresh_settings();
 		}
 
 		public function calculate_shipping( $package = array() ) {

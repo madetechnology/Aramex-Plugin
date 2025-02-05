@@ -93,3 +93,26 @@ function aramex_shipping_aunz_get_settings( $settings, $current_section ) {
 	}
 	return $settings;
 }
+
+/**
+ * Save settings.
+ */
+function aramex_shipping_aunz_update_settings() {
+    global $current_section;
+    
+    if ('aramex_shipping' === $current_section) {
+        aramex_debug_log('Saving Aramex settings...');
+        
+        // Get the current value before saving
+        $old_country = get_option('aramex_shipping_aunz_origin_country', 'nz');
+        
+        // Save settings
+        woocommerce_update_options(aramex_shipping_aunz_get_settings(array(), $current_section));
+        
+        // Get the new value after saving
+        $new_country = get_option('aramex_shipping_aunz_origin_country', 'nz');
+        
+        aramex_debug_log(sprintf('Origin country changed from %s to %s', $old_country, $new_country));
+    }
+}
+add_action('woocommerce_update_options_shipping_aramex_shipping', 'aramex_shipping_aunz_update_settings');
