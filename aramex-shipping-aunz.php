@@ -2,21 +2,44 @@
 /**
  * Plugin Name: Aramex Shipping AUNZ
  * Plugin URI: https://github.com/madeinoz67/aramex-shipping-aunz
- * Description: Aramex shipping integration for WooCommerce
+ * Description: Seamlessly integrate Aramex shipping services into your WooCommerce store. Features include real-time shipping rates, label generation, package tracking, and automated email notifications for Australia and New Zealand shipments.
  * Version: 1.0.0
- * Author: Stephen Eaton
+ * Author: TBP
  * Text Domain: Aramex-Plugin
  * Domain Path: /languages
  * Requires at least: 5.8
  * Requires PHP: 7.4
+ * Tested up to: 6.7
  *
- * License: GNU General Public License v3.0
- * License URI: http://www.gnu.org/licenses/gpl-3.0.html
+ * License: GPLv2 or later
+ * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  *
  * @package aramex_shipping_aunz
  */
 
 defined( 'ABSPATH' ) || exit;
+
+if ( ! defined( 'ARAMEX_PLUGIN_FILE' ) ) {
+	define( 'ARAMEX_PLUGIN_FILE', __FILE__ );
+	define( 'ARAMEX_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+	define( 'ARAMEX_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+}
+
+// Include helpers and other functions that don't depend on WC_Shipping_Method.
+require_once ARAMEX_PLUGIN_DIR . 'src/functions-helpers.php';
+require_once ARAMEX_PLUGIN_DIR . 'src/functions-admin-notices.php';
+require_once ARAMEX_PLUGIN_DIR . 'src/functions-ajax.php';
+require_once ARAMEX_PLUGIN_DIR . 'src/functions-settings.php';
+
+/**
+ * Add settings link on plugin page
+ */
+function aramex_shipping_aunz_settings_link($links) {
+    $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=wc-settings&tab=shipping&section=aramex_shipping')) . '">' . esc_html__('Settings', 'Aramex-Plugin') . '</a>';
+    array_unshift($links, $settings_link);
+    return $links;
+}
+add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'aramex_shipping_aunz_settings_link');
 
 /**
  * Debug logging wrapper.
@@ -31,18 +54,6 @@ if ( ! function_exists( 'aramex_debug_log' ) ) {
 		}
 	}
 }
-
-if ( ! defined( 'ARAMEX_PLUGIN_FILE' ) ) {
-	define( 'ARAMEX_PLUGIN_FILE', __FILE__ );
-	define( 'ARAMEX_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-	define( 'ARAMEX_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-}
-
-// Include helpers and other functions that don't depend on WC_Shipping_Method.
-require_once ARAMEX_PLUGIN_DIR . 'src/functions-helpers.php';
-require_once ARAMEX_PLUGIN_DIR . 'src/functions-admin-notices.php';
-require_once ARAMEX_PLUGIN_DIR . 'src/functions-ajax.php';
-require_once ARAMEX_PLUGIN_DIR . 'src/functions-settings.php';
 
 // Aramex Actions.
 add_action( 'wp_ajax_aramex_shipping_aunz_test_connection_ajax', 'aramex_shipping_aunz_test_connection_ajax_callback' );
@@ -88,12 +99,12 @@ function aramex_tracking_shortcode() {
             resultsDiv.html('<p>Loading tracking information...</p>');
             
             $.ajax({
-                url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                url: '<?php echo esc_url(admin_url('admin-ajax.php')); ?>',
                 type: 'POST',
                 data: {
                     action: 'track_shipment_action',
                     label_number: trackingNumber,
-                    nonce: '<?php echo wp_create_nonce('track_shipment_nonce'); ?>'
+                    nonce: '<?php echo esc_js(wp_create_nonce('track_shipment_nonce')); ?>'
                 },
                 success: function(response) {
                     if (response.success) {
@@ -439,7 +450,7 @@ function aramex_admin_scripts( $hook ) {
         'aramexAdmin',
         array(
             'ajax_url'             => esc_url( admin_url( 'admin-ajax.php' ) ),
-            'nonce'                => wp_create_nonce( 'aramex_test_connection_nonce' ),
+            'nonce'                => esc_js(wp_create_nonce('aramex_test_connection_nonce')),
             /* translators: Shown while testing API connection */
             'testing_text'         => esc_html__( 'Testing...', 'Aramex-Plugin' ),
             /* translators: Error message shown when API connection fails */

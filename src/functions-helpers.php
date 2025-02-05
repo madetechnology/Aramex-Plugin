@@ -72,6 +72,14 @@ function aramex_shipping_aunz_add_checkout_fields( $fields ) {
 add_filter( 'woocommerce_checkout_fields', 'aramex_shipping_aunz_add_checkout_fields' );
 
 /**
+ * Add nonce field to checkout form
+ */
+function aramex_shipping_aunz_add_checkout_nonce() {
+    wp_nonce_field( 'aramex_packaging_choice', 'aramex_packaging_nonce' );
+}
+add_action( 'woocommerce_after_checkout_billing_form', 'aramex_shipping_aunz_add_checkout_nonce' );
+
+/**
  * Add JavaScript to handle packaging field visibility and trigger shipping update
  */
 function aramex_shipping_aunz_checkout_script() {
@@ -124,20 +132,46 @@ add_action( 'wp_footer', 'aramex_shipping_aunz_checkout_script' );
  * Save packaging choice to order meta
  */
 function aramex_shipping_aunz_save_packaging_choice( $order_id ) {
-	if ( isset( $_POST['aramex_packaging_type'] ) ) {
-		update_post_meta( $order_id, '_aramex_packaging_type', sanitize_text_field( $_POST['aramex_packaging_type'] ) );
-	}
-	if ( isset( $_POST['aramex_satchel_size'] ) ) {
-		update_post_meta( $order_id, '_aramex_satchel_size', sanitize_text_field( $_POST['aramex_satchel_size'] ) );
-	}
+    // Verify nonce
+    if ( ! isset( $_POST['aramex_packaging_nonce'] ) || 
+         ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aramex_packaging_nonce'] ) ), 'aramex_packaging_choice' ) ) {
+        return;
+    }
+
+    if ( isset( $_POST['aramex_packaging_type'] ) ) {
+        update_post_meta( 
+            $order_id, 
+            '_aramex_packaging_type', 
+            sanitize_text_field( wp_unslash( $_POST['aramex_packaging_type'] ) ) 
+        );
+    }
+    
+    if ( isset( $_POST['aramex_satchel_size'] ) ) {
+        update_post_meta( 
+            $order_id, 
+            '_aramex_satchel_size', 
+            sanitize_text_field( wp_unslash( $_POST['aramex_satchel_size'] ) ) 
+        );
+    }
 }
 add_action( 'woocommerce_checkout_update_order_meta', 'aramex_shipping_aunz_save_packaging_choice' );
+
+/**
+ * Debug logging wrapper
+ */
+if ( ! function_exists( 'aramex_debug_log' ) ) {
+    function aramex_debug_log( $message ) {
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( '[Aramex Debug] ' . $message ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+        }
+    }
+}
 
 /**
  * Fetch access token.
  */
 function aramex_shipping_aunz_get_access_token( $api_key, $secret, $origin_country ) {
-	error_log( 'Fetching access token...' );
+	aramex_debug_log( 'Fetching access token...' );
 
 	// Set the correct token endpoint based on country
 	$url = ( $origin_country === 'au' ) 
@@ -159,12 +193,12 @@ function aramex_shipping_aunz_get_access_token( $api_key, $secret, $origin_count
 	);
 
 	if ( is_wp_error( $response ) ) {
-		error_log( 'Error fetching access token: ' . $response->get_error_message() );
+		aramex_debug_log( 'Error fetching access token: ' . $response->get_error_message() );
 		return null;
 	}
 
 	$response_body = wp_remote_retrieve_body( $response );
-	error_log( 'Access Token API Response: ' . $response_body );
+	aramex_debug_log( 'Access Token API Response: ' . $response_body );
 
 	$data = json_decode( $response_body, true );
 	return isset( $data['access_token'] ) ? $data['access_token'] : null;

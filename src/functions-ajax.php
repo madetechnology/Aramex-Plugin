@@ -190,7 +190,7 @@ function aramex_create_consignment_callback() {
 	$api_base_url = aramex_shipping_aunz_get_api_base_url( $origin_country );
 
 	aramex_debug_log( 'Aramex API Request URL: ' . $api_base_url . '/api/consignments' );
-	aramex_debug_log( 'Aramex API Request Body: ' . json_encode( $body, JSON_PRETTY_PRINT ) );
+	aramex_debug_log( 'Aramex API Request Body: ' . wp_json_encode( $body, JSON_PRETTY_PRINT ) );
 
 	$response = wp_remote_post(
 		$api_base_url . '/api/consignments',
@@ -253,7 +253,7 @@ function aramex_create_consignment_callback() {
 			)
 		);
 	} else {
-		aramex_debug_log( 'Aramex API Error: Invalid response format - ' . print_r( $response_data, true ) );
+		aramex_debug_log( 'Aramex API Error: Invalid response format - ' . wp_json_encode( $response_data, JSON_PRETTY_PRINT ) );
 		wp_send_json_error(
 			array(
 				'message' => 'Failed to create consignment. Invalid response format.',
@@ -267,11 +267,15 @@ add_action( 'wp_ajax_create_consignment_action', 'aramex_create_consignment_call
 function aramex_delete_consignment_callback() {
 	check_ajax_referer( 'delete_consignment_nonce', 'nonce' );
 
-	$order_id    = isset( $_POST['order_id'] ) ? intval( $_POST['order_id'] ) : 0;
-	$con_id      = isset( $_POST['consignment_id'] ) ? sanitize_text_field( $_POST['consignment_id'] ) : '';
+	if ( ! isset( $_POST['consignment_id'] ) ) {
+		wp_send_json_error( array( 'message' => 'Consignment ID is required.' ) );
+	}
 
-	if ( ! $order_id || ! $con_id ) {
-		wp_send_json_error( array( 'message' => 'Invalid order ID or consignment ID.' ) );
+	$consignment_id = sanitize_text_field( wp_unslash( $_POST['consignment_id'] ) );
+	$order_id = isset( $_POST['order_id'] ) ? intval( $_POST['order_id'] ) : 0;
+
+	if ( ! $order_id ) {
+		wp_send_json_error( array( 'message' => 'Invalid order ID.' ) );
 	}
 
 	$order = wc_get_order( $order_id );
@@ -281,19 +285,16 @@ function aramex_delete_consignment_callback() {
 
 	require_once ARAMEX_PLUGIN_DIR . 'src/class-aramex-shipping-method.php';
 	$shipping_method = new My_Shipping_Method();
-	$access_token   = $shipping_method->get_access_token();
+	$access_token = $shipping_method->get_access_token();
 
 	if ( ! $access_token ) {
 		wp_send_json_error( array( 'message' => 'Failed to retrieve access token.' ) );
 	}
 
 	$origin_country = get_option( 'aramex_shipping_aunz_origin_country', 'nz' );
-	$api_base_url   = aramex_shipping_aunz_get_api_base_url( $origin_country );
+	$api_base_url = aramex_shipping_aunz_get_api_base_url( $origin_country );
 
-	$delete_reason_id = 3; // "Created in Error"
-	$api_endpoint     = $api_base_url . "/api/consignments/{$con_id}/reason/{$delete_reason_id}";
-
-	aramex_debug_log( 'Delete Consignment Request URL: ' . $api_endpoint );
+	aramex_debug_log( 'Aramex API Delete Request URL: ' . $api_base_url . '/api/consignments/' . $consignment_id );
 
 	$response = wp_remote_request(
 		$api_endpoint,
@@ -345,7 +346,7 @@ function aramex_print_label_callback() {
 	check_ajax_referer( 'print_label_nonce', 'nonce' );
 
 	$order_id = isset( $_POST['order_id'] ) ? intval( $_POST['order_id'] ) : 0;
-	$con_id   = isset( $_POST['con_id'] ) ? sanitize_text_field( $_POST['con_id'] ) : '';
+	$con_id   = isset( $_POST['con_id'] ) ? sanitize_text_field( wp_unslash( $_POST['con_id'] ) ) : '';
 
 	if ( ! $order_id || ! $con_id ) {
 		wp_send_json_error( array( 'message' => 'Invalid order ID or consignment ID.' ) );
@@ -480,7 +481,7 @@ add_action( 'wp_ajax_print_label_action', 'aramex_print_label_callback' );
 function aramex_track_shipment_callback() {
 	check_ajax_referer( 'track_shipment_nonce', 'nonce' );
 
-	$label_number = isset( $_POST['label_number'] ) ? sanitize_text_field( $_POST['label_number'] ) : '';
+	$label_number = isset( $_POST['label_number'] ) ? sanitize_text_field( wp_unslash( $_POST['label_number'] ) ) : '';
 
 	if ( ! $label_number ) {
 		wp_send_json_error( array( 'message' => 'Invalid tracking number.' ) );
@@ -602,7 +603,7 @@ function aramex_track_shipment_callback() {
 		$events = $response_data['data'];
 		foreach ( $events as $event ) {
 			$tracking_events[] = array(
-				'date'            => isset( $event['scannedDateTime'] ) ? date( 'Y-m-d H:i:s', strtotime( $event['scannedDateTime'] ) ) : '',
+				'date'            => isset( $event['scannedDateTime'] ) ? gmdate( 'Y-m-d H:i:s', strtotime( $event['scannedDateTime'] ) ) : '',
 				'status'          => isset( $event['status'] ) ? $event['status'] : '',
 				'description'     => isset( $event['description'] ) ? $event['description'] : '',
 				'scan_description'=> isset( $event['scanTypeDescription'] ) ? $event['scanTypeDescription'] : '',
@@ -613,7 +614,7 @@ function aramex_track_shipment_callback() {
 		// Nested 'events' array.
 		foreach ( $response_data['data']['events'] as $event ) {
 			$tracking_events[] = array(
-				'date'            => isset( $event['timestamp'] ) ? date( 'Y-m-d H:i:s', strtotime( $event['timestamp'] ) ) : '',
+				'date'            => isset( $event['timestamp'] ) ? gmdate( 'Y-m-d H:i:s', strtotime( $event['timestamp'] ) ) : '',
 				'status'          => isset( $event['status'] ) ? $event['status'] : '',
 				'description'     => isset( $event['description'] ) ? $event['description'] : '',
 				'scan_description'=> isset( $event['scanDescription'] ) ? $event['scanDescription'] : '',

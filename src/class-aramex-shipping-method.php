@@ -131,17 +131,17 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 		}
 
 		public function calculate_shipping( $package = array() ) {
-			error_log( 'Calculating shipping for package: ' . print_r( $package, true ) );
+			aramex_debug_log( 'Calculating shipping for package: ' . wp_json_encode( $package, JSON_PRETTY_PRINT ) );
 
 			$access_token = $this->get_access_token();
 			if ( ! $access_token ) {
-				error_log( 'Failed to retrieve access token.' );
+				aramex_debug_log( 'Failed to retrieve access token.' );
 				return;
 			}
 
 			$location_details_key = $this->get_location_details_key( $access_token, $package );
 			if ( ! $location_details_key ) {
-				error_log( 'Failed to retrieve locationDetailsKey.' );
+				aramex_debug_log( 'Failed to retrieve locationDetailsKey.' );
 				return;
 			}
 
@@ -150,7 +150,22 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 			$allow_customer_choice = $this->get_option('allow_customer_packaging') === 'yes';
 			
 			if ($allow_customer_choice && isset($_POST['post_data'])) {
-				parse_str($_POST['post_data'], $post_data);
+				// Verify nonce
+				if ( ! isset( $_POST['aramex_packaging_nonce'] ) || 
+					! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aramex_packaging_nonce'] ) ), 'aramex_packaging_choice' ) ) {
+					aramex_debug_log( 'Nonce verification failed for packaging choice.' );
+					return;
+				}
+
+				// Sanitize post data before parsing
+				$post_data_str = sanitize_text_field( wp_unslash( $_POST['post_data'] ) );
+				if ( empty( $post_data_str ) ) {
+					aramex_debug_log( 'Invalid post data received.' );
+					return;
+				}
+
+				parse_str( $post_data_str, $post_data );
+				
 				if (!empty($post_data['aramex_packaging_type'])) {
 					$packaging_type = sanitize_text_field($post_data['aramex_packaging_type']);
 				}
@@ -179,7 +194,7 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 						'SatchelSize' => $satchel_size,
 					));
 				} else {
-					error_log('Invalid satchel size selected.');
+					aramex_debug_log('Invalid satchel size selected.');
 					return;
 				}
 			} else {
@@ -187,14 +202,14 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 			}
 
 			if (empty($packages)) {
-				error_log('No valid packages could be calculated.');
+				aramex_debug_log('No valid packages could be calculated.');
 				return;
 			}
 
 			// Get shipping rates for each package
 			$rates = $this->get_quote_rates($access_token, $location_details_key, $packages);
 			if (empty($rates)) {
-				error_log('No rates found from the API.');
+				aramex_debug_log('No rates found from the API.');
 				return;
 			}
 
@@ -208,10 +223,10 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 						'label' => $description . ' - $' . number_format($total_price, 2),
 						'cost'  => $total_price,
 					);
-					error_log('Adding shipping rate: ' . print_r($rate, true));
+					aramex_debug_log('Adding shipping rate: ' . wp_json_encode($rate, JSON_PRETTY_PRINT));
 					$this->add_rate($rate);
 				} else {
-					error_log("Skipping rate for {$description} due to invalid total_price.");
+					aramex_debug_log("Skipping rate for {$description} due to invalid total_price.");
 				}
 			}
 		}
@@ -221,7 +236,7 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 		}
 
 		private function get_location_details_key( $access_token, $package ) {
-			error_log( "Fetching locationDetailsKey with access token: {$access_token}" );
+			aramex_debug_log( "Fetching locationDetailsKey with access token: {$access_token}" );
 
 			$destination = $package['destination'];
 			$api_base_url = aramex_shipping_aunz_get_api_base_url( $this->origin_country );
@@ -252,6 +267,8 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 				),
 			);
 
+			aramex_debug_log( 'Location API Request Body: ' . wp_json_encode( $body, JSON_PRETTY_PRINT ) );
+
 			$response = wp_remote_post(
 				$url,
 				array(
@@ -265,19 +282,19 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 			);
 
 			if ( is_wp_error( $response ) ) {
-				error_log( 'Error fetching locationDetailsKey: ' . $response->get_error_message() );
+				aramex_debug_log( 'Error fetching locationDetailsKey: ' . $response->get_error_message() );
 				return null;
 			}
 
 			$response_body = wp_remote_retrieve_body( $response );
-			error_log( 'Location API Response: ' . $response_body );
+			aramex_debug_log( 'Location API Response: ' . $response_body );
 
 			$data = json_decode( $response_body, true );
 			return $data['data']['locationDetails']['locationDetailsKey'] ?? null;
 		}
 
 		private function get_quote_rates($access_token, $location_details_key, $packages) {
-			error_log("Fetching quote rates with locationDetailsKey: {$location_details_key}");
+			aramex_debug_log("Fetching quote rates with locationDetailsKey: {$location_details_key}");
 
 			$api_base_url = aramex_shipping_aunz_get_api_base_url($this->origin_country);
 			$url = $api_base_url . '/api/consignments/quote?api-version=2';
@@ -287,6 +304,8 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 				'Items' => $packages,
 				'Services' => array(),
 			);
+
+			aramex_debug_log('Quote API Request Body: ' . wp_json_encode($body, JSON_PRETTY_PRINT));
 
 			$response = wp_remote_post(
 				$url,
@@ -301,17 +320,17 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 			);
 
 			if (is_wp_error($response)) {
-				error_log('Error fetching quote rates: ' . $response->get_error_message());
+				aramex_debug_log('Error fetching quote rates: ' . $response->get_error_message());
 				return array();
 			}
 
 			$response_body = wp_remote_retrieve_body($response);
-			error_log('Quote API Response: ' . $response_body);
+			aramex_debug_log('Quote API Response: ' . $response_body);
 
 			$data = json_decode($response_body, true);
 
 			if (!isset($data['data']) || !is_array($data['data'])) {
-				error_log('Invalid or missing data in Quote API response.');
+				aramex_debug_log('Invalid or missing data in Quote API response.');
 				return array();
 			}
 
@@ -330,7 +349,7 @@ if ( ! class_exists( 'My_Shipping_Method' ) ) {
 				}
 			}
 
-			error_log('Parsed Services: ' . print_r($parsed_services, true));
+			aramex_debug_log('Parsed Services: ' . wp_json_encode($parsed_services, JSON_PRETTY_PRINT));
 
 			return $parsed_services;
 		}
