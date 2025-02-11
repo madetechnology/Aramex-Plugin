@@ -53,8 +53,45 @@ function aramex_shipping_aunz_test_connection_ajax_callback() {
 }
 add_action( 'wp_ajax_aramex_shipping_aunz_test_connection_ajax', 'aramex_shipping_aunz_test_connection_ajax_callback' );
 
+/**
+ * Validate product dimensions in an order.
+ *
+ * @param WC_Order $order The order object to validate.
+ * @return array Array with validation status and list of products missing dimensions.
+ */
+function aramex_validate_product_dimensions($order) {
+	$missing_dimensions = array();
+	
+	foreach ($order->get_items() as $item) {
+		$product = $item->get_product();
+		if ($product) {
+			$length = $product->get_length();
+			$width = $product->get_width();
+			$height = $product->get_height();
+			
+			if (empty($length) || empty($width) || empty($height)) {
+				$missing_dimensions[] = array(
+					'id' => $product->get_id(),
+					'name' => $product->get_name(),
+					'edit_link' => get_edit_post_link($product->get_id()),
+					'missing' => array(
+						'length' => empty($length),
+						'width' => empty($width),
+						'height' => empty($height)
+					)
+				);
+			}
+		}
+	}
+	
+	return array(
+		'is_valid' => empty($missing_dimensions),
+		'missing_dimensions' => $missing_dimensions
+	);
+}
+
 function aramex_create_consignment_callback() {
-	check_ajax_referer( 'create_consignment_nonce', 'nonce' );
+	check_ajax_referer( 'create_consignment_action', 'nonce' );
 
 	$order_id = isset( $_POST['order_id'] ) ? intval( $_POST['order_id'] ) : 0;
 	if ( ! $order_id ) {
@@ -64,6 +101,16 @@ function aramex_create_consignment_callback() {
 	$order = wc_get_order( $order_id );
 	if ( ! $order ) {
 		wp_send_json_error( array( 'message' => 'Order not found.' ) );
+	}
+
+	// Validate product dimensions first
+	$validation_result = aramex_validate_product_dimensions($order);
+	if (!$validation_result['is_valid']) {
+		wp_send_json_error(array(
+			'message' => 'Some products are missing dimensions.',
+			'type' => 'missing_dimensions',
+			'products' => $validation_result['missing_dimensions']
+		));
 	}
 
 	$to_address = array(

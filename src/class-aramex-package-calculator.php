@@ -105,28 +105,65 @@ class Aramex_Package_Calculator {
      * Calculate single box for all items
      */
     private function calculate_single_box($cart_items) {
+        // Validate cart items
+        if (empty($cart_items)) {
+            aramex_debug_log('No cart items provided');
+            return array();
+        }
+
         $total_weight = 0;
-        $max_length = 0;
-        $max_width = 0;
-        $max_height = 0;
+        $dimensions = array(
+            'length' => array(),
+            'width' => array(),
+            'height' => array()
+        );
 
         foreach ($cart_items as $item) {
             $product = $item['data'];
             $quantity = $item['quantity'];
 
+            // Ensure we have a valid product object
+            if (!$product instanceof WC_Product) {
+                if (isset($item['product_id'])) {
+                    $product = wc_get_product($item['product_id']);
+                    aramex_debug_log('Fetched product using product_id: ' . $item['product_id']);
+                } else {
+                    aramex_debug_log('Invalid product data in cart item');
+                    continue;
+                }
+            }
+
+            // Skip if product doesn't exist or has no dimensions
+            if (!$product || 
+                empty($product->get_length()) || 
+                empty($product->get_width()) || 
+                empty($product->get_height())) {
+                aramex_debug_log('Product missing dimensions - Length: ' . ($product ? $product->get_length() : 'null') . 
+                               ', Width: ' . ($product ? $product->get_width() : 'null') . 
+                               ', Height: ' . ($product ? $product->get_height() : 'null'));
+                continue;
+            }
+
             $total_weight += (float) $product->get_weight() * $quantity;
-            $max_length = max($max_length, (float) $product->get_length());
-            $max_width = max($max_width, (float) $product->get_width());
-            $max_height = max($max_height, (float) $product->get_height());
+            $dimensions['length'][] = (float) $product->get_length();
+            $dimensions['width'][] = (float) $product->get_width();
+            $dimensions['height'][] = (float) $product->get_height();
         }
 
+        // If no valid dimensions found, return empty array
+        if (empty($dimensions['length']) || empty($dimensions['width']) || empty($dimensions['height'])) {
+            aramex_debug_log('No valid dimensions found for any products');
+            return array();
+        }
+
+        // Now we can safely call max() since we've verified arrays are not empty
         return array(array(
             'PackageType' => self::PACKAGE_TYPE_PACKAGE,
             'Quantity' => 1,
             'WeightDead' => $total_weight,
-            'Length' => $max_length,
-            'Width' => $max_width,
-            'Height' => $max_height,
+            'Length' => max($dimensions['length']),
+            'Width' => max($dimensions['width']),
+            'Height' => max($dimensions['height']),
         ));
     }
 
@@ -200,6 +237,31 @@ class Aramex_Package_Calculator {
             $product = $item['data'];
             $quantity = $item['quantity'];
             
+            // Debug log for product data
+            aramex_debug_log('Processing product ID: ' . ($product ? $product->get_id() : 'null'));
+            
+            // Ensure we have a valid product object
+            if (!$product instanceof WC_Product) {
+                if (isset($item['product_id'])) {
+                    $product = wc_get_product($item['product_id']);
+                    aramex_debug_log('Fetched product using product_id: ' . $item['product_id']);
+                } else {
+                    aramex_debug_log('Invalid product data in cart item');
+                    continue;
+                }
+            }
+            
+            // Skip if product doesn't exist or has no dimensions
+            if (!$product || 
+                empty($product->get_length()) || 
+                empty($product->get_width()) || 
+                empty($product->get_height())) {
+                aramex_debug_log('Product missing dimensions - Length: ' . $product->get_length() . 
+                               ', Width: ' . $product->get_width() . 
+                               ', Height: ' . $product->get_height());
+                continue;
+            }
+            
             for ($i = 0; $i < $quantity; $i++) {
                 $grouped_items[] = array(
                     'length' => (float) $product->get_length(),
@@ -209,6 +271,12 @@ class Aramex_Package_Calculator {
                     'volume' => (float) $product->get_length() * $product->get_width() * $product->get_height(),
                 );
             }
+        }
+        
+        // If no valid items found, return empty array
+        if (empty($grouped_items)) {
+            aramex_debug_log('No valid items with dimensions found');
+            return array();
         }
         
         // Sort by volume in descending order
@@ -368,6 +436,9 @@ class Aramex_Package_Calculator {
         }
 
         // Check weight limit (using the largest box weight limit as reference)
+        if (empty($this->custom_boxes)) {
+            return false; // If no custom boxes are defined, we can't fit any items
+        }
         $max_weight = max(array_column($this->custom_boxes, 'weight'));
         if ($box['weight'] + $item['weight'] > $max_weight) {
             return false;
