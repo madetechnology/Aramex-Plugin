@@ -340,8 +340,12 @@ function aramex_delete_consignment_callback() {
 
 	$origin_country = get_option( 'aramex_shipping_aunz_origin_country', 'nz' );
 	$api_base_url = aramex_shipping_aunz_get_api_base_url( $origin_country );
+	
+	// Using reason ID 3 for "Created in Error" as default
+	$delete_reason_id = 3;
+	$api_endpoint = $api_base_url . '/api/consignments/' . $consignment_id . '/reason/' . $delete_reason_id;
 
-	aramex_debug_log( 'Aramex API Delete Request URL: ' . $api_base_url . '/api/consignments/' . $consignment_id );
+	aramex_debug_log( 'Aramex API Delete Request URL: ' . $api_endpoint );
 
 	$response = wp_remote_request(
 		$api_endpoint,
@@ -368,11 +372,15 @@ function aramex_delete_consignment_callback() {
 
 	if ( 204 === $response_code || ( $response_code >= 200 && $response_code < 300 ) ) {
 		$order->delete_meta_data( 'aramex_conId' );
+		$order->delete_meta_data( 'aramex_label_number' );  // Also remove the label number
 		$order->save();
 
 		/* translators: %s: Consignment ID */
 		$order->add_order_note(
-			__( 'Consignment deleted successfully.', 'Aramex-Plugin' )
+			sprintf(
+				__( 'Consignment %s deleted successfully with reason: Created in Error', 'Aramex-Plugin' ),
+				$consignment_id
+			)
 		);
 
 		wp_send_json_success( array( 'message' => 'Consignment deleted successfully.' ) );
