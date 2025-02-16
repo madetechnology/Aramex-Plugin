@@ -330,6 +330,12 @@ function aramex_delete_consignment_callback() {
 		wp_send_json_error( array( 'message' => 'Order not found.' ) );
 	}
 
+	// Verify the consignment ID matches what's stored in the order
+	$stored_con_id = $order->get_meta('aramex_conId');
+	if ($stored_con_id !== $consignment_id) {
+		wp_send_json_error( array( 'message' => 'Consignment ID mismatch.' ) );
+	}
+
 	require_once ARAMEX_PLUGIN_DIR . 'src/class-aramex-shipping-method.php';
 	$shipping_method = new My_Shipping_Method();
 	$access_token = $shipping_method->get_access_token();
@@ -371,8 +377,10 @@ function aramex_delete_consignment_callback() {
 	aramex_debug_log( 'Delete Consignment Response Body: ' . $response_body );
 
 	if ( 204 === $response_code || ( $response_code >= 200 && $response_code < 300 ) ) {
+		// Remove all Aramex-related meta data
 		$order->delete_meta_data( 'aramex_conId' );
-		$order->delete_meta_data( 'aramex_label_number' );  // Also remove the label number
+		$order->delete_meta_data( 'aramex_label_no' );
+		$order->delete_meta_data( 'aramex_packages' );
 		$order->save();
 
 		/* translators: %s: Consignment ID */
@@ -387,10 +395,20 @@ function aramex_delete_consignment_callback() {
 	} else {
 		$response_data = json_decode( $response_body, true );
 		$error_message = isset( $response_data['message'] ) ? $response_data['message'] : 'Unexpected error occurred.';
+		
+		if (isset($response_data['errors']) && is_array($response_data['errors'])) {
+			$error_details = array();
+			foreach ($response_data['errors'] as $field => $errors) {
+				$error_details[] = $field . ': ' . implode(', ', $errors);
+			}
+			$error_message = 'Validation errors: ' . implode('; ', $error_details);
+		}
+		
 		wp_send_json_error(
 			array(
 				'message'       => 'Failed to delete consignment: ' . $error_message,
 				'response_code' => $response_code,
+				'response_data' => $response_data
 			)
 		);
 	}
@@ -531,172 +549,43 @@ function aramex_print_label_callback() {
 add_action( 'wp_ajax_print_label_action', 'aramex_print_label_callback' );
 
 /**
- * Track shipment AJAX.
+ * Track shipment AJAX callback
  */
 function aramex_track_shipment_callback() {
-	check_ajax_referer( 'track_shipment_nonce', 'nonce' );
+	check_ajax_referer('track_shipment_nonce', 'nonce');
 
-	$label_number = isset( $_POST['label_number'] ) ? sanitize_text_field( wp_unslash( $_POST['label_number'] ) ) : '';
+	$order_id = isset($_POST['order_id']) ? absint($_POST['order_id']) : 0;
+	$label_number = isset($_POST['label_number']) ? sanitize_text_field($_POST['label_number']) : '';
 
-	if ( ! $label_number ) {
-		wp_send_json_error( array( 'message' => 'Invalid tracking number.' ) );
+	if (!$order_id || !$label_number) {
+		wp_send_json_error(array('message' => 'Invalid order ID or tracking number'));
+		return;
 	}
 
-	// Dummy simulation case.
-	if ( 'DU12345678910' === $label_number ) {
-		$current_time  = current_time( 'timestamp' );
-		$dummy_events  = array(
-			array(
-				'date'            => gmdate( 'Y-m-d H:i:s', $current_time - ( 3600 * 24 ) ),
-				'status'          => 'Order Created',
-				'description'     => 'Shipping label created',
-				'scan_description'=> 'Electronic shipping details received',
-				'location'        => 'Online',
-			),
-			array(
-				'date'            => gmdate( 'Y-m-d H:i:s', $current_time - ( 3600 * 20 ) ),
-				'status'          => 'Picked Up',
-				'description'     => 'Shipment picked up by courier',
-				'scan_description'=> 'Picked up by courier',
-				'location'        => 'Auckland Depot',
-			),
-			array(
-				'date'            => gmdate( 'Y-m-d H:i:s', $current_time - ( 3600 * 16 ) ),
-				'status'          => 'In Transit',
-				'description'     => 'Arrived at sorting facility',
-				'scan_description'=> 'Package received at facility',
-				'location'        => 'Auckland Distribution Center',
-			),
-			array(
-				'date'            => gmdate( 'Y-m-d H:i:s', $current_time - ( 3600 * 12 ) ),
-				'status'          => 'In Transit',
-				'description'     => 'Departed sorting facility',
-				'scan_description'=> 'Package has left the facility',
-				'location'        => 'Auckland Distribution Center',
-			),
-			array(
-				'date'            => gmdate( 'Y-m-d H:i:s', $current_time - ( 3600 * 8 ) ),
-				'status'          => 'In Transit',
-				'description'     => 'Arrived at destination facility',
-				'scan_description'=> 'Package arrived at destination facility',
-				'location'        => 'Wellington Distribution Center',
-			),
-			array(
-				'date'            => gmdate( 'Y-m-d H:i:s', $current_time - ( 3600 * 4 ) ),
-				'status'          => 'Out for Delivery',
-				'description'     => 'With delivery courier',
-				'scan_description'=> 'Out for delivery',
-				'location'        => 'Wellington Local Courier',
-			),
-			array(
-				'date'            => gmdate( 'Y-m-d H:i:s', $current_time - ( 3600 * 1 ) ),
-				'status'          => 'Delivery Attempted',
-				'description'     => 'First delivery attempt',
-				'scan_description'=> 'No one available to receive package',
-				'location'        => 'Wellington',
-			),
-		);
-
-		wp_send_json_success(
-			array(
-				'message'        => 'Tracking information retrieved successfully.',
-				'tracking_events'=> $dummy_events,
-			)
-		);
+	$order = wc_get_order($order_id);
+	if (!$order) {
+		wp_send_json_error(array('message' => 'Order not found'));
+		return;
 	}
 
-	require_once ARAMEX_PLUGIN_DIR . 'src/class-aramex-shipping-method.php';
-	$shipping_method = new My_Shipping_Method();
-	$access_token   = $shipping_method->get_access_token();
-
-	if ( ! $access_token ) {
-		wp_send_json_error( array( 'message' => 'Failed to retrieve access token.' ) );
+	// Verify the tracking number matches the order
+	$stored_label_no = $order->get_meta('aramex_label_no');
+	if ($stored_label_no !== $label_number) {
+		wp_send_json_error(array('message' => 'Invalid tracking number for this order'));
+		return;
 	}
 
-	$origin_country = get_option( 'aramex_shipping_aunz_origin_country', 'nz' );
-	$api_base_url   = aramex_shipping_aunz_get_api_base_url( $origin_country );
-
-	$tracking_url = $api_base_url . '/api/track/label/' . urlencode( $label_number );
-	aramex_debug_log( 'Aramex Tracking Request URL: ' . $tracking_url );
-	aramex_debug_log( 'Aramex Tracking Label Number: ' . $label_number );
-
-	$response = wp_remote_get(
-		$tracking_url,
-		array(
-			'headers' => array(
-				'Authorization' => 'Bearer ' . $access_token,
-				'Accept'        => 'application/json',
-				'Content-Type'  => 'application/json',
-			),
-			'timeout' => 30,
-		)
-	);
-
-	if ( is_wp_error( $response ) ) {
-		aramex_debug_log( 'Aramex Tracking Error: ' . $response->get_error_message() );
-		wp_send_json_error( array( 'message' => 'Error tracking shipment: ' . $response->get_error_message() ) );
+	// Get tracking information
+	$tracking_info = aramex_get_tracking_info($label_number);
+	
+	if (!$tracking_info['success']) {
+		wp_send_json_error(array('message' => $tracking_info['message']));
+		return;
 	}
 
-	$response_code = wp_remote_retrieve_response_code( $response );
-	$response_body = wp_remote_retrieve_body( $response );
-	aramex_debug_log( 'Aramex Tracking Response Code: ' . $response_code );
-	aramex_debug_log( 'Aramex Tracking Response Body: ' . $response_body );
-
-	$response_data = json_decode( $response_body, true );
-
-	if ( 200 !== $response_code ) {
-		$error_message = isset( $response_data['message'] ) ? $response_data['message'] : 'Failed to retrieve tracking information.';
-		aramex_debug_log( 'Aramex Tracking Error Message: ' . $error_message );
-		wp_send_json_error( array( 'message' => $error_message ) );
-	}
-
-	$tracking_events = array();
-
-	// Format events for different possible data structures.
-	if ( isset( $response_data['data'] ) && is_array( $response_data['data'] ) && ! isset( $response_data['data']['events'] ) ) {
-		// Direct array of events in 'data'.
-		$events = $response_data['data'];
-		foreach ( $events as $event ) {
-			$tracking_events[] = array(
-				'date'            => isset( $event['scannedDateTime'] ) ? gmdate( 'Y-m-d H:i:s', strtotime( $event['scannedDateTime'] ) ) : '',
-				'status'          => isset( $event['status'] ) ? $event['status'] : '',
-				'description'     => isset( $event['description'] ) ? $event['description'] : '',
-				'scan_description'=> isset( $event['scanTypeDescription'] ) ? $event['scanTypeDescription'] : '',
-				'location'        => isset( $event['franchiseName'] ) ? $event['franchiseName'] : '',
-			);
-		}
-	} elseif ( isset( $response_data['data']['events'] ) && is_array( $response_data['data']['events'] ) ) {
-		// Nested 'events' array.
-		foreach ( $response_data['data']['events'] as $event ) {
-			$tracking_events[] = array(
-				'date'            => isset( $event['timestamp'] ) ? gmdate( 'Y-m-d H:i:s', strtotime( $event['timestamp'] ) ) : '',
-				'status'          => isset( $event['status'] ) ? $event['status'] : '',
-				'description'     => isset( $event['description'] ) ? $event['description'] : '',
-				'scan_description'=> isset( $event['scanDescription'] ) ? $event['scanDescription'] : '',
-				'location'        => isset( $event['location'] ) ? $event['location'] : '',
-			);
-		}
-	}
-
-	// Sort events newest first.
-	usort(
-		$tracking_events,
-		function( $a, $b ) {
-			return strtotime( $b['date'] ) - strtotime( $a['date'] );
-		}
-	);
-
-	if ( empty( $tracking_events ) ) {
-		aramex_debug_log( 'Aramex Tracking: No events found in response' );
-		wp_send_json_error( array( 'message' => 'No tracking events found for this shipment.' ) );
-	}
-
-	wp_send_json_success(
-		array(
-			'message'        => 'Tracking information retrieved successfully.',
-			'tracking_events'=> $tracking_events,
-		)
-	);
+	wp_send_json_success(array(
+		'tracking_events' => $tracking_info['events']
+	));
 }
 add_action( 'wp_ajax_track_shipment_action', 'aramex_track_shipment_callback' );
 add_action( 'wp_ajax_nopriv_track_shipment_action', 'aramex_track_shipment_callback' );

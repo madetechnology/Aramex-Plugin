@@ -30,8 +30,11 @@ if ( ! defined( 'ARAMEX_PLUGIN_FILE' ) ) {
 // Include helpers and other functions that don't depend on WC_Shipping_Method.
 require_once ARAMEX_PLUGIN_DIR . 'src/functions-helpers.php';
 require_once ARAMEX_PLUGIN_DIR . 'src/functions-admin-notices.php';
+require_once ARAMEX_PLUGIN_DIR . 'src/functions-tracking.php';
+require_once ARAMEX_PLUGIN_DIR . 'src/functions-email.php';
 require_once ARAMEX_PLUGIN_DIR . 'src/functions-ajax.php';
 require_once ARAMEX_PLUGIN_DIR . 'src/functions-settings.php';
+require_once ARAMEX_PLUGIN_DIR . 'src/functions-admin.php';
 
 /**
  * Add settings link on plugin page
@@ -223,21 +226,22 @@ function add_custom_button_to_order_page( $order ) {
     echo '<button type="button" class="button custom-action-button" id="custom-action-button" data-order-id="' . esc_attr( $order->get_id() ) . '">'
         . esc_html__( 'Create Consignment', 'Aramex-Plugin' ) . '</button>';
     
-    // Only show delete, print, and track buttons if aramex_conId exists
-    $con_id = aramex_get_order_meta($order, 'aramex_conId');
-    if ( $con_id ) {
-        $label_number = aramex_get_order_meta($order, 'aramex_label_number') ?: $con_id;
-        
+    // Get tracking label number and consignment ID
+    $label_no = $order->get_meta('aramex_label_no');
+    $con_id = $order->get_meta('aramex_conId');
+    
+    // Only show delete, print, and track buttons if tracking label exists
+    if ( $label_no ) {
         echo '<button type="button" class="button custom-action-delete-button" id="custom-action-delete-button" data-order-id="' . esc_attr( $order->get_id() ) 
             . '" data-consignment-id="' . esc_attr( $con_id ) . '">' 
             . esc_html__( 'Delete Consignment', 'Aramex-Plugin' ) . '</button>';
 
         echo '<button type="button" class="button custom-action-print-label" id="custom-action-print-label" data-order-id="' . esc_attr( $order->get_id() ) 
-            . '" data-consignment-id="' . esc_attr( $con_id ) . '">' 
+            . '" data-consignment-id="' . esc_attr( $label_no ) . '">' 
             . esc_html__( 'Print Label', 'Aramex-Plugin' ) . '</button>';
 
         echo '<button type="button" class="button custom-action-track-shipment" id="custom-action-track-shipment" data-order-id="' . esc_attr( $order->get_id() ) 
-            . '" data-consignment-id="' . esc_attr( $con_id ) . '" data-label-number="' . esc_attr( $label_number ) . '">'
+            . '" data-label-number="' . esc_attr( $label_no ) . '">'
             . esc_html__( 'Track Shipment', 'Aramex-Plugin' ) . '</button>';
         
         // Add tracking modal
@@ -260,173 +264,6 @@ function add_custom_button_to_order_page( $order ) {
 
 // Add AJAX action for tracking
 add_action( 'wp_ajax_track_shipment_action', 'aramex_track_shipment_callback' );
-
-/**
- * Add "Send Tracking Email" to order actions.
- */
-function aramex_add_order_action( $actions ) {
-    global $theorder;
-    
-    // Check if we have a valid order and it has an Aramex label number
-    if ( ! $theorder || ! is_object( $theorder ) ) {
-        return $actions;
-    }
-    
-    $label_number = $theorder->get_meta( 'aramex_label_number', true );
-    if ( ! empty( $label_number ) ) {
-        $actions['aramex_send_tracking_email'] = __( 'Send Tracking Email Update to customer', 'Aramex-Plugin' );
-    }
-    
-    return $actions;
-}
-add_filter( 'woocommerce_order_actions', 'aramex_add_order_action' );
-
-/**
- * Handle the tracking email action.
- */
-function aramex_handle_tracking_email( $order ) {
-    aramex_debug_log( 'Aramex: Starting tracking email process for order ' . $order->get_id() );
-
-    if ( ! $order || ! is_a( $order, 'WC_Order' ) ) {
-        aramex_debug_log( 'Aramex: Invalid order object' );
-        return;
-    }
-
-    $label_number = aramex_get_order_meta($order, 'aramex_label_number');
-    if ( empty( $label_number ) ) {
-        aramex_debug_log( 'Aramex: No label number found for order ' . $order->get_id() );
-        $order->add_order_note(
-            __( 'Failed to send tracking email: No label number found', 'Aramex-Plugin' )
-        );
-        return;
-    }
-
-    aramex_debug_log( 'Aramex: Getting tracking info for label ' . $label_number );
-    
-    // Get tracking information
-    $tracking_info = aramex_get_tracking_info( $label_number );
-    
-    // Send email regardless of whether there are tracking events
-    $email_sent = aramex_send_tracking_email( $order, $tracking_info );
-    if ( $email_sent ) {
-        aramex_debug_log( 'Aramex: Email sent successfully to ' . $order->get_billing_email() );
-        $order->add_order_note(
-            __( 'Tracking information email sent to customer.', 'Aramex-Plugin' )
-        );
-    } else {
-        aramex_debug_log( 'Aramex: Failed to send email to ' . $order->get_billing_email() );
-        $order->add_order_note(
-            __( 'Failed to send tracking email. Please check server email configuration.', 'Aramex-Plugin' )
-        );
-    }
-}
-
-/**
- * Send tracking email to customer.
- *
- * @param WC_Order $order         The order object.
- * @param array    $tracking_info The tracking information.
- * @return bool True if mail sent successfully, false otherwise.
- */
-function aramex_send_tracking_email( $order, $tracking_info ) {
-    $to = $order->get_billing_email();
-    /* translators: %s: Order number */
-    $subject = sprintf(
-		/* translators: %s: The order number */
-        esc_html__( 'Tracking Update for Order #%s', 'Aramex-Plugin' ),
-        $order->get_order_number()
-    );
-    
-    aramex_debug_log( 'Aramex: Preparing email for order ' . $order->get_id() . ' to ' . $to );
-    
-    // Get store info for the from address
-    $from_name  = get_bloginfo( 'name' );
-    $from_email = get_option( 'admin_email' );
-    
-    ob_start();
-    ?>
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <?php
-            /* translators: %s: Customer first name */
-            printf( '<p style="margin-bottom: 20px;">' . esc_html__( 'Hello %s,', 'Aramex-Plugin' ) . '</p>', esc_html( $order->get_billing_first_name() ) );
-            ?>
-            
-            <?php if ( ! $tracking_info['success'] || empty( $tracking_info['events'] ) ) : ?>
-                <p style="margin-bottom: 20px;"><?php esc_html_e( 'Your order has been processed and is awaiting pickup by our courier partner.', 'Aramex-Plugin' ); ?></p>
-                <p style="margin-bottom: 20px;"><?php esc_html_e( 'Pickup usually happens within 1-2 business days.', 'Aramex-Plugin' ); ?></p>
-                
-                <div style="background-color: #f8f8f8; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin: 20px 0;">
-                    <p style="margin: 0;">
-                        <strong><?php esc_html_e( 'Tracking Number:', 'Aramex-Plugin' ); ?></strong>
-                        <?php echo esc_html( $order->get_meta( 'aramex_label_number', true ) ); ?>
-                    </p>
-                </div>
-            <?php else : ?>
-                <p style="margin-bottom: 20px;"><?php esc_html_e( 'Here is the current tracking information for your order:', 'Aramex-Plugin' ); ?></p>
-                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                    <thead>
-                        <tr style="background-color: #f8f8f8;">
-                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;"><?php esc_html_e( 'Date/Time', 'Aramex-Plugin' ); ?></th>
-                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;"><?php esc_html_e( 'Status', 'Aramex-Plugin' ); ?></th>
-                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;"><?php esc_html_e( 'Description', 'Aramex-Plugin' ); ?></th>
-                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;"><?php esc_html_e( 'Location', 'Aramex-Plugin' ); ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ( $tracking_info['events'] as $event ) : ?>
-                        <tr>
-                            <td style="padding: 10px; border: 1px solid #ddd;"><?php echo esc_html( $event['date'] ); ?></td>
-                            <td style="padding: 10px; border: 1px solid #ddd;"><?php echo esc_html( $event['status'] ); ?></td>
-                            <td style="padding: 10px; border: 1px solid #ddd;"><?php echo esc_html( $event['scan_description'] ?: $event['description'] ); ?></td>
-                            <td style="padding: 10px; border: 1px solid #ddd;"><?php echo esc_html( $event['location'] ); ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
-            
-            <p style="margin-top: 20px;"><?php esc_html_e( 'Thank you for choosing our service.', 'Aramex-Plugin' ); ?></p>
-            
-            <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
-                <?php esc_html_e( "If you have any questions about your shipment, please don't hesitate to contact us.", 'Aramex-Plugin' ); ?>
-            </p>
-        </div>
-    </body>
-    </html>
-    <?php
-    $message = ob_get_clean();
-    
-    // Set up email headers
-    $headers = array(
-        'Content-Type: text/html; charset=UTF-8',
-        'From: ' . $from_name . ' <' . $from_email . '>',
-        'Reply-To: ' . $from_email,
-    );
-
-    aramex_debug_log( 'Aramex: Attempting to send email. To: ' . $to . ' Subject: ' . $subject );
-
-    // Send the email
-    $sent = wp_mail( $to, $subject, $message, $headers );
-    
-    if ( ! $sent ) {
-        aramex_debug_log( 'Aramex: Email sending failed. wp_mail returned false.' );
-        global $phpmailer;
-        if ( isset( $phpmailer ) && is_object( $phpmailer ) ) {
-            aramex_debug_log( 'Aramex: PHPMailer Error: ' . $phpmailer->ErrorInfo );
-        }
-    } else {
-        aramex_debug_log( 'Aramex: Email sent successfully.' );
-    }
-    
-    return $sent;
-}
 
 /**
  * Add admin scripts for test connection functionality.
