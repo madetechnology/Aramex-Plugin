@@ -222,35 +222,35 @@ function add_custom_button_to_order_page( $order ) {
         return;
     }
 
-    // Add custom button
-    echo '<button type="button" class="button custom-action-button" id="custom-action-button" data-order-id="' . esc_attr( $order->get_id() ) . '">'
-        . esc_html__( 'Create Consignment', 'Aramex-Plugin' ) . '</button>';
-    
     // Get tracking label number and consignment ID
-    $label_no = $order->get_meta('aramex_label_no');
     $con_id = $order->get_meta('aramex_conId');
+    $label_no = $order->get_meta('aramex_label_no');
     
-    // Only show delete, print, and track buttons if tracking label exists
-    if ( $label_no ) {
-        echo '<button type="button" class="button custom-action-delete-button" id="custom-action-delete-button" data-order-id="' . esc_attr( $order->get_id() ) 
+    if (!$con_id) {
+        // Only show create consignment button if no consignment exists
+        echo '<button type="button" class="button custom-action-button" id="custom-action-button" data-order-id="' . esc_attr( $order->get_id() ) . '">'
+            . esc_html__( 'Create Consignment', 'Aramex-Plugin' ) . '</button>';
+    } else {
+        // Show all buttons if consignment exists
+        echo '<button type="button" class="button custom-action-delete-button" data-order-id="' . esc_attr( $order->get_id() ) 
             . '" data-consignment-id="' . esc_attr( $con_id ) . '">' 
             . esc_html__( 'Delete Consignment', 'Aramex-Plugin' ) . '</button>';
 
-        echo '<button type="button" class="button custom-action-print-label" id="custom-action-print-label" data-order-id="' . esc_attr( $order->get_id() ) 
-            . '" data-consignment-id="' . esc_attr( $label_no ) . '">' 
+        echo '<button type="button" class="button custom-action-print-label" data-order-id="' . esc_attr( $order->get_id() ) 
+            . '" data-consignment-id="' . esc_attr( $con_id ) . '">' 
             . esc_html__( 'Print Label', 'Aramex-Plugin' ) . '</button>';
 
-        echo '<button type="button" class="button custom-action-track-shipment" id="custom-action-track-shipment" data-order-id="' . esc_attr( $order->get_id() ) 
+        echo '<button type="button" class="button custom-action-track-shipment" data-order-id="' . esc_attr( $order->get_id() ) 
             . '" data-label-number="' . esc_attr( $label_no ) . '">'
             . esc_html__( 'Track Shipment', 'Aramex-Plugin' ) . '</button>';
         
         // Add tracking modal
-        echo '<div id="aramex-tracking-modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;'
+        echo '<div class="aramex-tracking-modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;'
             . 'overflow: auto; background-color: rgba(0,0,0,0.4);">';
         echo '<div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px;">';
-        echo '<span class="close" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>';
+        echo '<span class="aramex-modal-close" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>';
         echo '<h2>' . esc_html__( 'Shipment Tracking', 'Aramex-Plugin' ) . '</h2>';
-        echo '<div id="aramex-tracking-content"></div>';
+        echo '<div class="aramex-tracking-content"></div>';
         echo '</div>';
         echo '</div>';
     }
