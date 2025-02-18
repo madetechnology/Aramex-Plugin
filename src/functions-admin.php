@@ -71,8 +71,8 @@ function aramex_tracking_label_meta_box_content($post_or_order_object) {
  */
 function aramex_save_tracking_label($post_id) {
     // Check if our nonce is set and verify it
-    if (!isset($_POST['aramex_tracking_label_nonce']) || 
-        !wp_verify_nonce($_POST['aramex_tracking_label_nonce'], 'aramex_save_tracking_label')) {
+    $nonce = isset($_POST['aramex_tracking_label_nonce']) ? sanitize_text_field(wp_unslash($_POST['aramex_tracking_label_nonce'])) : '';
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'aramex_save_tracking_label')) {
         return;
     }
 
@@ -92,9 +92,9 @@ function aramex_save_tracking_label($post_id) {
         return;
     }
 
-    // Check if the tracking label field is set
+    // Check if the tracking label field is set and sanitize it
     if (isset($_POST['aramex_label_no'])) {
-        $label_no = sanitize_text_field($_POST['aramex_label_no']);
+        $label_no = sanitize_text_field(wp_unslash($_POST['aramex_label_no']));
         
         // Get the old value
         $old_label_no = $order->get_meta('aramex_label_no', true);
@@ -105,8 +105,10 @@ function aramex_save_tracking_label($post_id) {
         
         // If the value has changed, add an order note
         if ($label_no !== $old_label_no) {
+            /* translators: %s: The new tracking label number */
             $order->add_order_note(
                 sprintf(
+                    /* translators: %s: The new tracking label number */
                     __('Aramex tracking label updated to: %s', 'Aramex-Plugin'),
                     $label_no
                 )

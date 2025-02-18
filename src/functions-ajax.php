@@ -386,6 +386,7 @@ function aramex_delete_consignment_callback() {
 		/* translators: %s: Consignment ID */
 		$order->add_order_note(
 			sprintf(
+				/* translators: %s: Consignment ID */
 				__( 'Consignment %s deleted successfully with reason: Created in Error', 'Aramex-Plugin' ),
 				$consignment_id
 			)
@@ -555,7 +556,7 @@ function aramex_track_shipment_callback() {
 	check_ajax_referer('track_shipment_nonce', 'nonce');
 
 	$order_id = isset($_POST['order_id']) ? absint($_POST['order_id']) : 0;
-	$label_number = isset($_POST['label_number']) ? sanitize_text_field($_POST['label_number']) : '';
+	$label_number = isset($_POST['label_number']) ? sanitize_text_field(wp_unslash($_POST['label_number'])) : '';
 
 	if (!$order_id || !$label_number) {
 		wp_send_json_error(array('message' => 'Invalid order ID or tracking number'));
